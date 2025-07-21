@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>oomtm450PuckMod_Template</AssemblyName>
+    <AssemblyName>oomtm450PuckMod_CurvedStick</AssemblyName>
     <TargetFramework>net4.8</TargetFramework>
   </PropertyGroup>
 

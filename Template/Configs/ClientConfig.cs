@@ -1,10 +1,10 @@
 ﻿using Newtonsoft.Json;
-using oomtm450PuckMod_Template.SystemFunc;
+using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System.IO;
 
-namespace oomtm450PuckMod_Template.Configs {
+namespace oomtm450PuckMod_CurvedStick.Configs {
     /// <summary>
-    /// Class containing the configuration from oomtm450_template_clientconfig.json used for this mod.
+    /// Class containing the configuration from oomtm450_curvedstick_clientconfig.json used for this mod.
     /// </summary>
     public class ClientConfig : IConfig {
         /// <summary>
