@@ -7,10 +7,19 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
     /// Class containing the configuration from oomtm450_curvedstick_clientconfig.json used for this mod.
     /// </summary>
     public class ClientConfig : IConfig {
+        #region Constants
+        /// <summary>
+        /// Const string, name used when sending the config data to the client.
+        /// </summary>
+        public const string CONFIG_DATA_NAME = Constants.MOD_NAME + "_clientconfig.json";
+        #endregion
+
+        #region Properties
         /// <summary>
         /// Bool, true if the info logs must be printed.
         /// </summary>
         public bool LogInfo { get; set; } = true;
+        #endregion
 
         /// <summary>
         /// Function that serialize the ClientConfig object.
@@ -38,7 +47,7 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
             ClientConfig config = new ClientConfig();
 
             string rootPath = Path.GetFullPath(".");
-            string configPath = Path.Combine(rootPath, Constants.MOD_NAME + "_clientconfig.json");
+            string configPath = Path.Combine(rootPath, CONFIG_DATA_NAME);
             if (File.Exists(configPath)) {
                 string configFileContent = File.ReadAllText(configPath);
                 config = SetConfig(configFileContent);

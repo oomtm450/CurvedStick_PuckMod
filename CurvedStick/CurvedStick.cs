@@ -49,15 +49,15 @@ namespace oomtm450PuckMod_CurvedStick {
                         Logging.Log("Player_Server_SpawnStick_Patch", _clientConfig);
 
                     // Find parent stickMesh object.
-                    GameObject stickMesh = __instance.transform.Find("Stick (Attacker)(Clone)").Find("Rotation Container").Find("Stick Mesh (Attacker)").gameObject;
+                    GameObject stickMesh = __instance.gameObject.transform.Find("Stick (Attacker)(Clone)").Find("Rotation Container").Find("Stick Mesh (Attacker)").gameObject;
 
                     // Set stick mesh.
                     stickMesh.transform.Find("stick_attacker").Find("Stick (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = null;
-                    stickMesh.transform.Find("stick_attacker").Find("Stick (Attacker)").gameObject.GetComponent<MeshFilter>().mesh = null;
+                    //stickMesh.transform.Find("stick_attacker").Find("Stick (Attacker)").gameObject.GetComponent<MeshFilter>().mesh = null;
 
                     // Set blade tape mesh.
-                    stickMesh.transform.Find("stick_attacker").Find("Shaft Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = null;
-                    stickMesh.transform.Find("stick_attacker").Find("Shaft Tape (Attacker)").gameObject.GetComponent<MeshFilter>().mesh = null;
+                    //stickMesh.transform.Find("stick_attacker").Find("Shaft Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = null;
+                    //stickMesh.transform.Find("stick_attacker").Find("Shaft Tape (Attacker)").gameObject.GetComponent<MeshFilter>().mesh = null;
 
                     // Set blade collider.
                     //stickMesh.transform.Find("Puck Colliders").Find("Blade").GetComponent<MeshCollider>().sharedMesh = null;
