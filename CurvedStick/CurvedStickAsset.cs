@@ -9,7 +9,8 @@ using UnityEngine;
 namespace oomtm450PuckMod_CurvedStick {
     internal class CurvedStickAsset : MonoBehaviour {
         #region Constants
-        private const string ASSETS_FOLDER_PATH = @"assets\curvedstick";
+        private const string ASSETS_FOLDER_PATH1 = "assets";
+        private const string ASSETS_FOLDER_PATH2 = "curvedstick";
         private const string ASSETS_EXTENSION = ".unity3d";
         #endregion
 
@@ -39,7 +40,8 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 DontDestroyOnLoad(gameObject);
 
-                string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), ASSETS_FOLDER_PATH);
+                string fullPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), ASSETS_FOLDER_PATH1);
+                fullPath = Path.Combine(fullPath, ASSETS_FOLDER_PATH2);
 
                 if (!Directory.Exists(fullPath)) {
                     Logging.LogError($"Assets not found at: {fullPath}");

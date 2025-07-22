@@ -16,7 +16,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.1.0DEV2";
+        private const string MOD_VERSION = "0.1.0DEV3";
         #endregion
 
         #region Fields
@@ -37,6 +37,26 @@ namespace oomtm450PuckMod_CurvedStick {
 
         private static CurvedStickAsset _curvedStickAsset;
         #endregion
+
+        /// <summary>
+        /// Class that patches the UpdateStick event from Stick.
+        /// </summary>
+        [HarmonyPatch(typeof(Stick), nameof(Stick.UpdateStick))]
+        public class Stick_UpdateStick_Patch {
+            [HarmonyPostfix]
+            public static void Postfix(Stick __instance) {
+                try {
+                    //if (!ServerFunc.IsDedicatedServer())
+                        //return;
+
+                    Logging.Log("Stick_UpdateStick_Patch", _serverConfig);
+                    SetCurvedStick(__instance.Player);
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in Stick_UpdateStick_Patch Postfix().\n{ex}");
+                }
+            }
+        }
 
         /// <summary>
         /// Class that patches the Server_SpawnStick event from Player.
@@ -120,7 +140,7 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SetCurvedStick(Player player) {
-            if (player.Role.Value != PlayerRole.Attacker)
+            if (!player || player.Role.Value != PlayerRole.Attacker)
                 return;
 
             Logging.Log("1", _serverConfig, true);
@@ -129,8 +149,7 @@ namespace oomtm450PuckMod_CurvedStick {
             _curvedStickAsset = curvedStickAssetObject.AddComponent<CurvedStickAsset>();
             _curvedStickAsset.LoadAssets();
 
-            if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0)
-            {
+            if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
                 if (_curvedStickAsset.Meshes.Count == 0)
                     Logging.LogError("No mesh found in the assets.");
                 foreach (string error in _curvedStickAsset.Errors)
@@ -145,7 +164,7 @@ namespace oomtm450PuckMod_CurvedStick {
             else
                 handedness = "Left";
 
-            Logging.Log("2", _serverConfig, true);
+            Logging.Log($"2 : Handedness : {handedness}", _serverConfig, true);
 
             // Find parent stickMesh object.
             GameObject stickMesh = player.gameObject.transform.Find("Stick (Attacker)(Clone)").gameObject.transform.Find("Rotation Container").gameObject.transform.Find("Stick Mesh (Attacker)").gameObject;
@@ -190,11 +209,6 @@ namespace oomtm450PuckMod_CurvedStick {
             Logging.Log("6", _serverConfig, true);
         }
 
-        private static void Event_OnStickSpawned(Dictionary<string, object> message) {
-            Stick stick = (Stick)message["stick"];
-            SetCurvedStick(stick.Player);
-        }
-
         private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
             SetCurvedStick((Player)message["player"]);
         }
@@ -226,7 +240,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 if (ServerFunc.IsDedicatedServer())
                     EventManager.Instance.AddEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
-                EventManager.Instance.AddEventListener("Event_OnStickSpawned", Event_OnStickSpawned);
+
                 EventManager.Instance.AddEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 return true;
@@ -247,7 +261,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 if (ServerFunc.IsDedicatedServer())
                     EventManager.Instance.RemoveEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
-                EventManager.Instance.RemoveEventListener("Event_OnStickSpawned", Event_OnStickSpawned);
+
                 EventManager.Instance.RemoveEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 Logging.Log($"Disabling...", _serverConfig, true);
