@@ -92,7 +92,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     bladePuckMeshCollider.convex = true;
                     bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
                     bladePuckGameObject.transform.localScale = new Vector3(100, 100, 100);
-                    bladePuckGameObject.transform.localRotation = new Quaternion(270, 0, 0, 1);
+                    bladePuckGameObject.transform.localRotation = Quaternion.Euler(270, 0, 0);
                     //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
                     //mf.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
                     //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
@@ -108,7 +108,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     bladeStickMeshCollider.convex = true;
                     bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
                     bladeStickGameObject.transform.localScale = new Vector3(100, 100, 100);
-                    bladeStickGameObject.transform.localRotation = new Quaternion(270, 0, 0, 1);
+                    bladeStickGameObject.transform.localRotation = Quaternion.Euler(270, 0, 0);
 
                     Logging.Log("6", _serverConfig, true);
                 }
