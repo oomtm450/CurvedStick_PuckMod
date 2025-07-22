@@ -167,7 +167,19 @@ namespace oomtm450PuckMod_CurvedStick {
             Logging.Log($"2 : Handedness : {handedness}", _serverConfig, true);
 
             // Find parent stickMesh object.
-            GameObject stickMesh = player.gameObject.transform.Find("Stick (Attacker)(Clone)").gameObject.transform.Find("Rotation Container").gameObject.transform.Find("Stick Mesh (Attacker)").gameObject;
+            Transform stickMeshTransform = player.gameObject.transform.Find("Stick (Attacker)(Clone)");
+            if (!stickMeshTransform)
+                return;
+
+            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Rotation Container");
+            if (!stickMeshTransform)
+                return;
+
+            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Stick Mesh (Attacker)");
+            if (!stickMeshTransform)
+                return;
+
+            GameObject stickMesh = stickMeshTransform.gameObject;
 
             // Set stick mesh.
             GameObject stickGameObject = stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject;
