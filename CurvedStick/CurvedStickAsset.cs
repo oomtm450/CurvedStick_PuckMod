@@ -12,7 +12,7 @@ namespace oomtm450PuckMod_CurvedStick {
     internal class CurvedStickAsset : MonoBehaviour {
         #region Constants
         private const string ASSETS_FOLDER_PATH = @"assets\curvedstick";
-        private const string ASSETS_EXTENSION = ".assets";
+        private const string ASSETS_EXTENSION = ".unity3d";
         #endregion
 
         #region Properties
@@ -62,11 +62,11 @@ namespace oomtm450PuckMod_CurvedStick {
                     Errors.Add(webRequest.error);
                 else {
                     try {
-                        string fileName = filePath.Substring(filePath.LastIndexOf('\\') + 1, filePath.Length - filePath.LastIndexOf('\\') - 1).Replace(ASSETS_EXTENSION, "");
+                        //string fileName = filePath.Substring(filePath.LastIndexOf('\\') + 1, filePath.Length - filePath.LastIndexOf('\\') - 1).Replace(ASSETS_EXTENSION, "");
                         AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(webRequest);
 
-                        foreach (var test in assetBundle.LoadAllAssets())
-                            Errors.Add(test.name);
+                        foreach (var test in assetBundle.GetAllAssetNames())
+                            Errors.Add(test);
                         Mesh mesh = assetBundle.LoadAsset<Mesh>("LeftStick");
                         DontDestroyOnLoad(mesh);
                         Meshes.Add("LeftStick", mesh);
