@@ -34,6 +34,8 @@ namespace oomtm450PuckMod_CurvedStick {
         /// ServerConfig, config set by the client.
         /// </summary>
         private static ClientConfig _clientConfig = new ClientConfig();
+
+        private static CurvedStickAsset _curvedStickAsset;
         #endregion
 
         /// <summary>
@@ -49,19 +51,16 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     Logging.Log("Player_Server_SpawnStick_Patch", _serverConfig);
 
-                    // Find parent stickMesh object.
-                    GameObject stickMesh = __instance.gameObject.transform.Find("Stick (Attacker)(Clone)").gameObject.transform.Find("Rotation Container").gameObject.transform.Find("Stick Mesh (Attacker)").gameObject;
-
                     Logging.Log("1", _serverConfig, true);
 
                     GameObject curvedStickAssetObject = new GameObject(Constants.MOD_NAME + "CurvedStickAsset");
-                    CurvedStickAsset curvedStickAsset = curvedStickAssetObject.AddComponent<CurvedStickAsset>();
-                    curvedStickAsset.LoadAssets();
+                    _curvedStickAsset = curvedStickAssetObject.AddComponent<CurvedStickAsset>();
+                    _curvedStickAsset.LoadAssets();
 
-                    if (curvedStickAsset.Meshes.Count == 0 || curvedStickAsset.Errors.Count != 0) {
-                        if (curvedStickAsset.Meshes.Count == 0)
+                    if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
+                        if (_curvedStickAsset.Meshes.Count == 0)
                             Logging.LogError("No mesh found in the assets.");
-                        foreach (string error in curvedStickAsset.Errors)
+                        foreach (string error in _curvedStickAsset.Errors)
                             Logging.LogError(error);
 
                         return;
@@ -69,8 +68,14 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     Logging.Log("2", _serverConfig, true);
 
+                    // Find parent stickMesh object.
+                    GameObject stickMesh = __instance.gameObject.transform.Find("Stick (Attacker)(Clone)").gameObject.transform.Find("Rotation Container").gameObject.transform.Find("Stick Mesh (Attacker)").gameObject;
+
                     // Set stick mesh.
-                    stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = curvedStickAsset.Meshes["LeftStick"];
+                    GameObject stickGameObject = stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject;
+                    stickGameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes["LeftStick"];
+                    stickGameObject.transform.localScale = new Vector3(100, 100, 100);
+                    stickGameObject.transform.localRotation = new Quaternion(0, 0, 0, 1);
                     //stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshFilter>().mesh = null;
 
                     Logging.Log("3", _serverConfig, true);
@@ -81,13 +86,29 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     Logging.Log("4", _serverConfig, true);
 
-                    // Set blade collider.
-                    stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").GetComponent<MeshCollider>().sharedMesh = curvedStickAsset.Meshes["LeftBlade"];
+                    // Set blade collider for puck.
+                    GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
+                    MeshCollider bladePuckMeshCollider = bladePuckGameObject.GetComponent<MeshCollider>();
+                    bladePuckMeshCollider.convex = true;
+                    bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
+                    bladePuckGameObject.transform.localScale = new Vector3(100, 100, 100);
+                    bladePuckGameObject.transform.localRotation = new Quaternion(270, 0, 0, 1);
+                    //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
+                    //mf.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
+                    //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
+                    //mr.material = new Material(stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshRenderer>().material) {
+                    //    color = new Color(1, 0, 0, 0.8f),
+                    //};
 
                     Logging.Log("5", _serverConfig, true);
 
-                    // Set stick collider.
-                    stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").GetComponent<MeshCollider>().sharedMesh = curvedStickAsset.Meshes["LeftBlade"];
+                    // Set blade collider for stick.
+                    GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
+                    MeshCollider bladeStickMeshCollider = bladeStickGameObject.GetComponent<MeshCollider>();
+                    bladeStickMeshCollider.convex = true;
+                    bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes["LeftBlade"];
+                    bladeStickGameObject.transform.localScale = new Vector3(100, 100, 100);
+                    bladeStickGameObject.transform.localRotation = new Quaternion(270, 0, 0, 1);
 
                     Logging.Log("6", _serverConfig, true);
                 }

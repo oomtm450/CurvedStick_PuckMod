@@ -1,18 +1,20 @@
 ﻿using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using UnityEngine;
-using UnityEngine.Networking;
 
 namespace oomtm450PuckMod_CurvedStick {
     internal class CurvedStickAsset : MonoBehaviour {
         #region Constants
         private const string ASSETS_FOLDER_PATH = @"assets\curvedstick";
         private const string ASSETS_EXTENSION = ".unity3d";
+        #endregion
+
+        #region Fields
+        private static AssetBundle _assetBundle;
         #endregion
 
         #region Properties
@@ -25,7 +27,6 @@ namespace oomtm450PuckMod_CurvedStick {
             while (Meshes.Count != 0) {
                 var meshObject = Meshes.First();
                 Meshes.Remove(meshObject.Key);
-                Destroy(meshObject.Value);
             }
 
             Destroy(gameObject);
@@ -45,41 +46,33 @@ namespace oomtm450PuckMod_CurvedStick {
                     return;
                 }
 
-                StartCoroutine(GetAssets(fullPath));
+                GetAssets(fullPath);
             }
             catch (Exception ex) {
                 Logging.LogError($"Error loading Images.\n{ex}");
             }
         }
 
-        private IEnumerator GetAssets(string path) {
+        private void GetAssets(string path) {
             foreach (string file in Directory.GetFiles(path, "*" + ASSETS_EXTENSION, SearchOption.AllDirectories)) {
-                string filePath = new Uri(Path.GetFullPath(file)).LocalPath;
-                UnityWebRequest webRequest = UnityWebRequestAssetBundle.GetAssetBundle(filePath);
-                yield return webRequest.SendWebRequest();
+                try {
+                    string filePath = new Uri(Path.GetFullPath(file)).LocalPath;
 
-                if (webRequest.result != UnityWebRequest.Result.Success)
-                    Errors.Add(webRequest.error);
-                else {
-                    try {
-                        //string fileName = filePath.Substring(filePath.LastIndexOf('\\') + 1, filePath.Length - filePath.LastIndexOf('\\') - 1).Replace(ASSETS_EXTENSION, "");
-                        AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(webRequest);
+                    if (_assetBundle == null)
+                        _assetBundle = AssetBundle.LoadFromFile(filePath);
 
-                        foreach (var test in assetBundle.GetAllAssetNames())
-                            Errors.Add(test);
-                        Mesh mesh = assetBundle.LoadAsset<Mesh>("LeftStick");
-                        DontDestroyOnLoad(mesh);
-                        Meshes.Add("LeftStick", mesh);
+                    new Mesh().UploadMeshData(true);
 
-                        mesh = assetBundle.LoadAsset<Mesh>("LeftBlade");
-                        DontDestroyOnLoad(mesh);
-                        Meshes.Add("LeftBlade", mesh);
+                    Mesh mesh = _assetBundle.LoadAsset<Mesh>("assets/leftstickfixed.fbx");
+                    Meshes.Add("LeftStick", mesh);
 
-                        //assetBundle.Unload(true);
-                    }
-                    catch (Exception ex) {
-                        Errors.Add(ex.ToString());
-                    }
+                    mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladefixed.fbx");
+                    Meshes.Add("LeftBlade", mesh);
+
+                    break;
+                }
+                catch (Exception ex) {
+                    Errors.Add(ex.ToString());
                 }
             }
         }
