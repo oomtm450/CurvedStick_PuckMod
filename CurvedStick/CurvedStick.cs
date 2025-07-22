@@ -2,11 +2,10 @@
 using oomtm450PuckMod_CurvedStick.Configs;
 using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System;
+using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.XR;
 
 namespace oomtm450PuckMod_CurvedStick {
     /// <summary>
@@ -120,7 +119,7 @@ namespace oomtm450PuckMod_CurvedStick {
             }
         }
 
-        private static void SetCurvedStick(this Player player) {
+        private static void SetCurvedStick(Player player) {
             if (player.Role.Value != PlayerRole.Attacker)
                 return;
 
@@ -191,6 +190,15 @@ namespace oomtm450PuckMod_CurvedStick {
             Logging.Log("6", _serverConfig, true);
         }
 
+        private static void Event_OnStickSpawned(Dictionary<string, object> message) {
+            Stick stick = (Stick)message["stick"];
+            SetCurvedStick(stick.Player);
+        }
+
+        private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
+            SetCurvedStick((Player)message["player"]);
+        }
+
         /// <summary>
         /// Method that launches when the mod is being enabled.
         /// </summary>
@@ -215,7 +223,11 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
 
                 Logging.Log("Subscribing to events.", _serverConfig, true);
-                EventManager.Instance.AddEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
+
+                if (ServerFunc.IsDedicatedServer())
+                    EventManager.Instance.AddEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
+                EventManager.Instance.AddEventListener("Event_OnStickSpawned", Event_OnStickSpawned);
+                EventManager.Instance.AddEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 return true;
             }
@@ -233,7 +245,10 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 Logging.Log("Unsubscribing from events.", _serverConfig, true);
 
-                EventManager.Instance.RemoveEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
+                if (ServerFunc.IsDedicatedServer())
+                    EventManager.Instance.RemoveEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
+                EventManager.Instance.RemoveEventListener("Event_OnStickSpawned", Event_OnStickSpawned);
+                EventManager.Instance.RemoveEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 Logging.Log($"Disabling...", _serverConfig, true);
 
