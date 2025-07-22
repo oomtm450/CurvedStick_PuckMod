@@ -69,6 +69,12 @@ namespace oomtm450PuckMod_CurvedStick {
                     mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladefixed.fbx");
                     Meshes.Add("LeftBlade", mesh);
 
+                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightstickfixed.fbx");
+                    Meshes.Add("RightStick", mesh);
+
+                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightbladefixed.fbx");
+                    Meshes.Add("RightBlade", mesh);
+
                     break;
                 }
                 catch (Exception ex) {
