@@ -15,7 +15,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.1.0DEV4";
+        private const string MOD_VERSION = "0.1.0DEV6";
         #endregion
 
         #region Fields
@@ -70,7 +70,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     Logging.Log("Player_Server_SpawnStick_Patch", _serverConfig);
                     SetCurvedStick(__instance);
-                    NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), "1", Constants.FROM_SERVER, _serverConfig);
+                    NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), __instance.OwnerClientId.ToString(), Constants.FROM_SERVER, _serverConfig);
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in Player_Server_SpawnStick_Patch Postfix().\n{ex}");
@@ -125,10 +125,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         break;
 
                     case nameof(SetCurvedStick):
-                        if (dataStr != "1")
-                            break;
-
-                        SetCurvedStick(PlayerManager.Instance.GetPlayerByClientId(clientId));
+                        SetCurvedStick(PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(dataStr)));
                         break;
 
                     case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
@@ -191,12 +188,14 @@ namespace oomtm450PuckMod_CurvedStick {
             GameObject stickMesh = stickMeshTransform.gameObject;
 
             if (!ServerFunc.IsDedicatedServer()) {
+                GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
+
                 // Set stick mesh.
-                GameObject stickGameObject = stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject;
+                GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
                 stickGameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.STICK];
 
                 // Set blade tape mesh.
-                stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.TAPE];
+                stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.TAPE];
             }
 
             Logging.Log("4", _serverConfig, true);
