@@ -12,6 +12,20 @@ namespace oomtm450PuckMod_CurvedStick {
         private const string ASSETS_FOLDER_PATH1 = "assets";
         private const string ASSETS_FOLDER_PATH2 = "curvedstick";
         private const string ASSETS_EXTENSION = ".unity3d";
+
+        internal const string STICK = "stick";
+        internal const string BLADE = "blade";
+        internal const string TAPE = "tape";
+
+        internal const string LEFT = "left";
+        internal const string LEFT_STICK = LEFT + STICK;
+        internal const string LEFT_BLADE = LEFT + BLADE;
+        internal const string LEFT_TAPE = LEFT + TAPE;
+
+        internal const string RIGHT = "right";
+        internal const string RIGHT_STICK = RIGHT + STICK;
+        internal const string RIGHT_BLADE = RIGHT + BLADE;
+        internal const string RIGHT_TAPE = RIGHT + TAPE;
         #endregion
 
         #region Fields
@@ -66,16 +80,22 @@ namespace oomtm450PuckMod_CurvedStick {
                     new Mesh().UploadMeshData(true);
 
                     Mesh mesh = _assetBundle.LoadAsset<Mesh>("assets/leftstickfixed.fbx");
-                    Meshes.Add("LeftStick", mesh);
+                    Meshes.Add(LEFT_STICK, mesh);
 
                     mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladefixed.fbx");
-                    Meshes.Add("LeftBlade", mesh);
+                    Meshes.Add(LEFT_BLADE, mesh);
+
+                    mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladetape.fbx");
+                    Meshes.Add(LEFT_TAPE, mesh);
 
                     mesh = _assetBundle.LoadAsset<Mesh>("assets/rightstickfixed.fbx");
-                    Meshes.Add("RightStick", mesh);
+                    Meshes.Add(RIGHT_STICK, mesh);
 
                     mesh = _assetBundle.LoadAsset<Mesh>("assets/rightbladefixed.fbx");
-                    Meshes.Add("RightBlade", mesh);
+                    Meshes.Add(RIGHT_BLADE, mesh);
+
+                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightbladetape.fbx");
+                    Meshes.Add(RIGHT_TAPE, mesh);
 
                     break;
                 }
