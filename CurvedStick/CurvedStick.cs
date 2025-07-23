@@ -190,12 +190,10 @@ namespace oomtm450PuckMod_CurvedStick {
 
             GameObject stickMesh = stickMeshTransform.gameObject;
 
-            // Set stick mesh.
             if (!ServerFunc.IsDedicatedServer()) {
+                // Set stick mesh.
                 GameObject stickGameObject = stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject;
                 stickGameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.STICK];
-                stickGameObject.transform.localScale = new Vector3(100, 100, 100); // TODO : Remove when models are fixed.
-                stickGameObject.transform.localRotation = new Quaternion(0, 0, 0, 1); // TODO : Remove when models are fixed.
 
                 // Set blade tape mesh.
                 stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.TAPE];
@@ -208,8 +206,6 @@ namespace oomtm450PuckMod_CurvedStick {
             MeshCollider bladePuckMeshCollider = bladePuckGameObject.GetComponent<MeshCollider>();
             bladePuckMeshCollider.convex = true;
             bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-            bladePuckGameObject.transform.localScale = new Vector3(100, 100, 100); // TODO : Remove when models are fixed.
-            bladePuckGameObject.transform.localRotation = Quaternion.Euler(270, 0, 0); // TODO : Remove when models are fixed.
             //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
             //mf.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
             //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
@@ -224,8 +220,6 @@ namespace oomtm450PuckMod_CurvedStick {
             MeshCollider bladeStickMeshCollider = bladeStickGameObject.GetComponent<MeshCollider>();
             bladeStickMeshCollider.convex = true;
             bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-            bladeStickGameObject.transform.localScale = new Vector3(100, 100, 100); // TODO : Remove when models are fixed.
-            bladeStickGameObject.transform.localRotation = Quaternion.Euler(270, 0, 0); // TODO : Remove when models are fixed.
 
             Logging.Log("6", _serverConfig, true);
         }
