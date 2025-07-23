@@ -79,6 +79,31 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         /// <summary>
+        /// Class that patches the Server_SetPhase event from GameManager.
+        /// </summary>
+        [HarmonyPatch(typeof(GameManager), nameof(GameManager.Server_SetPhase))]
+        public class GameManager_Server_SetPhase_Patch {
+            [HarmonyPostfix]
+            public static void Postfix(GamePhase phase, int time) {
+                try {
+                    // If this is not the server, do not use the patch.
+                    if (!ServerFunc.IsDedicatedServer())
+                        return;
+
+                    if (phase == GamePhase.FaceOff) {
+                        foreach (Player player in PlayerManager.Instance.GetPlayers()) {
+                            SetCurvedStick(player);
+                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), player.OwnerClientId.ToString(), Constants.FROM_SERVER, _serverConfig);
+                        }
+                    }
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in GameManager_Server_SetPhase_Patch Postfix().\n{ex}");
+                }
+            }
+        }
+
+        /// <summary>
         /// Method called when a client has "spawned" (joined a server) on the server-side.
         /// Used to send data to the new client that has connected (config and mod version).
         /// </summary>
