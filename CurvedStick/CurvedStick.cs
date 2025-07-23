@@ -15,7 +15,9 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.1.0DEV6";
+        private const string MOD_VERSION = "0.1.0DEV8";
+
+        private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
         #endregion
 
         #region Fields
@@ -35,6 +37,14 @@ namespace oomtm450PuckMod_CurvedStick {
         private static ClientConfig _clientConfig = new ClientConfig();
 
         private static CurvedStickAsset _curvedStickAsset;
+
+        #region Client-Side
+        private static DateTime _lastDateTimeAskData = DateTime.MinValue;
+
+        private static bool _hasRegisteredWithNamedMessageHandler = false;
+
+        private static bool _serverHasResponded = false;
+        #endregion
         #endregion
 
         /// <summary>
@@ -78,7 +88,7 @@ namespace oomtm450PuckMod_CurvedStick {
             }
         }
 
-        /// <summary>
+        /*/// <summary>
         /// Class that patches the Server_SetPhase event from GameManager.
         /// </summary>
         [HarmonyPatch(typeof(GameManager), nameof(GameManager.Server_SetPhase))]
@@ -100,6 +110,59 @@ namespace oomtm450PuckMod_CurvedStick {
                 catch (Exception ex) {
                     Logging.LogError($"Error in GameManager_Server_SetPhase_Patch Postfix().\n{ex}");
                 }
+            }
+        }*/
+
+        /// <summary>
+        /// Class that patches the UpdatePlayer event from UIScoreboard.
+        /// </summary>
+        [HarmonyPatch(typeof(UIScoreboard), nameof(UIScoreboard.UpdatePlayer))]
+        public class UIScoreboard_UpdatePlayer_Patch {
+            [HarmonyPostfix]
+            public static void Postfix(Player player) {
+                try {
+                    // If this is the server, do not use the patch.
+                    if (ServerFunc.IsDedicatedServer())
+                        return;
+
+                    if (!_hasRegisteredWithNamedMessageHandler || !_serverHasResponded) {
+                        //Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_SERVER}.", _clientConfig);
+                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_SERVER, ReceiveData);
+                        _hasRegisteredWithNamedMessageHandler = true;
+
+                        DateTime now = DateTime.UtcNow;
+                        if (_lastDateTimeAskData + TimeSpan.FromSeconds(1) < now) {
+                            _lastDateTimeAskData = now;
+                            NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT, _clientConfig);
+                        }
+                    }
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in UIScoreboard_UpdateServer_Patch Postfix().\n{ex}");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Method called when a client has connected (joined a server) on the server-side.
+        /// Used to set server-sided stuff after the game has loaded.
+        /// </summary>
+        /// <param name="message">Dictionary of string and object, content of the event.</param>
+        public static void Event_OnClientConnected(Dictionary<string, object> message) {
+            if (!ServerFunc.IsDedicatedServer())
+                return;
+
+            Logging.Log("Event_OnClientConnected", _serverConfig);
+
+            try {
+                if (NetworkManager.Singleton != null && !_hasRegisteredWithNamedMessageHandler) {
+                    Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT}.", _serverConfig);
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT, ReceiveData);
+                    _hasRegisteredWithNamedMessageHandler = true;
+                }
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in Event_OnClientConnected.\n{ex}");
             }
         }
 
@@ -146,11 +209,14 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (MOD_VERSION == dataStr) // TODO : Move the kick later so that it doesn't break anything. Maybe even add a chat message and a 3-5 sec wait.
                             break;
 
-                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_SERVER, _serverConfig);
+                        _serverHasResponded = true;
+
+                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_CLIENT, _serverConfig);
                         break;
 
                     case nameof(SetCurvedStick):
-                        SetCurvedStick(PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(dataStr)));
+                        if (!ServerFunc.IsDedicatedServer())
+                            SetCurvedStick(PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(dataStr)));
                         break;
 
                     case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
@@ -160,6 +226,13 @@ namespace oomtm450PuckMod_CurvedStick {
                         Logging.Log($"Kicking client {clientId}.", _serverConfig);
                         NetworkManager.Singleton.DisconnectClient(clientId,
                             $"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
+                        break;
+
+                    case ASK_SERVER_FOR_DATA: // SERVER-SIDE : Send the necessary data to client.
+                        if (dataStr != "1")
+                            break;
+
+                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER, _serverConfig);
                         break;
                 }
             }
@@ -265,9 +338,13 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log($"Enabled.", _serverConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    Logging.Log("Setting server sided config.", _serverConfig, true);
-                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT, ReceiveData);
+                    if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null) {
+                        Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT}.", _serverConfig);
+                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT, ReceiveData);
+                        _hasRegisteredWithNamedMessageHandler = true;
+                    }
 
+                    Logging.Log("Setting server sided config.", _serverConfig, true);
                     _serverConfig = ServerConfig.ReadConfig(ServerManager.Instance.AdminSteamIds);
                 }
                 else {
@@ -277,9 +354,10 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 Logging.Log("Subscribing to events.", _serverConfig, true);
 
-                if (ServerFunc.IsDedicatedServer())
+                if (ServerFunc.IsDedicatedServer()) {
                     EventManager.Instance.AddEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
-
+                    EventManager.Instance.AddEventListener("Event_OnClientConnected", Event_OnClientConnected);
+                }
                 EventManager.Instance.AddEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 return true;
@@ -298,9 +376,10 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 Logging.Log("Unsubscribing from events.", _serverConfig, true);
 
-                if (ServerFunc.IsDedicatedServer())
+                if (ServerFunc.IsDedicatedServer()) {
                     EventManager.Instance.RemoveEventListener("Event_OnPlayerSpawned", Event_OnPlayerSpawned);
-
+                    EventManager.Instance.RemoveEventListener("Event_OnClientConnected", Event_OnClientConnected);
+                }
                 EventManager.Instance.RemoveEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 Logging.Log($"Disabling...", _serverConfig, true);
