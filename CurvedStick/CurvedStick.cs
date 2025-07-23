@@ -70,6 +70,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     Logging.Log("Player_Server_SpawnStick_Patch", _serverConfig);
                     SetCurvedStick(__instance);
+                    NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), "1", Constants.FROM_SERVER, _serverConfig);
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in Player_Server_SpawnStick_Patch Postfix().\n{ex}");
@@ -121,6 +122,13 @@ namespace oomtm450PuckMod_CurvedStick {
                             break;
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_SERVER, _serverConfig);
+                        break;
+
+                    case nameof(SetCurvedStick):
+                        if (dataStr != "1")
+                            break;
+
+                        SetCurvedStick(PlayerManager.Instance.GetPlayerByClientId(clientId));
                         break;
 
                     case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
