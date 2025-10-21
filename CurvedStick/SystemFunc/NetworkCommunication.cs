@@ -3,7 +3,6 @@ using System;
 using System.Text;
 using Unity.Collections;
 using Unity.Netcode;
-using static UnityEngine.Rendering.STP;
 
 namespace oomtm450PuckMod_CurvedStick.SystemFunc {
     internal static class NetworkCommunication {

@@ -29,7 +29,7 @@ namespace oomtm450PuckMod_CurvedStick {
         #endregion
 
         #region Fields
-        private static AssetBundle _assetBundle;
+        private static AssetBundle _assetBundle = null;
         #endregion
 
         #region Properties
