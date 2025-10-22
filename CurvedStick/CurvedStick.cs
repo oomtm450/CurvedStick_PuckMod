@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.1.0DEV15";
+        private const string MOD_VERSION = "0.1.0DEV16";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
         #endregion
@@ -41,11 +41,16 @@ namespace oomtm450PuckMod_CurvedStick {
         private static CurvedStickAsset _curvedStickAsset;
 
         #region Client-Side
-        private static DateTime _lastDateTimeAskData = DateTime.MinValue;
+        private static DateTime _lastDateTimeAskStartupData = DateTime.MinValue;
 
         private static bool _hasRegisteredWithNamedMessageHandler = false;
 
         private static bool _serverHasResponded = false;
+
+        /// <summary>
+        /// Int, number of time client asked the server for startup data.
+        /// </summary>
+        private static int _askServerForStartupDataCount = 0;
         #endregion
 
         #region Server-Side
@@ -126,7 +131,9 @@ namespace oomtm450PuckMod_CurvedStick {
                         return;
 
                     Logging.Log("Player_Server_SpawnStick_Patch", _serverConfig);
-                    new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 100, Timeout.Infinite);
+                    //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 50, Timeout.Infinite);
+                    //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 100, Timeout.Infinite);
+                    new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 150, Timeout.Infinite);
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in Player_Server_SpawnStick_Patch Postfix().\n{ex}");
@@ -152,8 +159,8 @@ namespace oomtm450PuckMod_CurvedStick {
                         _hasRegisteredWithNamedMessageHandler = true;
 
                         DateTime now = DateTime.UtcNow;
-                        if (_lastDateTimeAskData + TimeSpan.FromSeconds(1) < now) {
-                            _lastDateTimeAskData = now;
+                        if (_lastDateTimeAskStartupData + TimeSpan.FromSeconds(1) < now && _askServerForStartupDataCount++ < 10) {
+                            _lastDateTimeAskStartupData = now;
                             NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT, _clientConfig);
                         }
                     }
@@ -227,9 +234,6 @@ namespace oomtm450PuckMod_CurvedStick {
                         break;
 
                     case nameof(SetCurvedStick):
-                        if (ServerFunc.IsDedicatedServer())
-                            return;
-
                         Player player = PlayerManager.Instance.GetPlayerBySteamId(dataStr);
                         if (player == null || !player)
                             return;
@@ -238,7 +242,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         break;
 
                     case nameof(SetCurvedStick) + "ALLREPLAY":
-                        if (ServerFunc.IsDedicatedServer() || dataStr != "1")
+                        if (dataStr != "1")
                             return;
 
                         foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
@@ -348,6 +352,26 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         /// <summary>
+        /// Method called when the client has stopped on the client-side.
+        /// Used to reset the config so that it doesn't carry over between servers.
+        /// </summary>
+        /// <param name="message">Dictionary of string and object, content of the event.</param>
+        public static void Event_Client_OnClientStopped(Dictionary<string, object> message) {
+            if (NetworkManager.Singleton == null || ServerFunc.IsDedicatedServer())
+                return;
+
+            try {
+                _serverConfig = new ServerConfig();
+
+                _serverHasResponded = false;
+                _askServerForStartupDataCount = 0;
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in Event_Client_OnClientStopped.\n{ex}");
+            }
+        }
+
+        /// <summary>
         /// Method that launches when the mod is being enabled.
         /// </summary>
         /// <returns>Bool, true if the mod successfully enabled.</returns>
@@ -380,6 +404,10 @@ namespace oomtm450PuckMod_CurvedStick {
                     EventManager.Instance.AddEventListener("Event_OnClientConnected", Event_OnClientConnected);
                     EventManager.Instance.AddEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
                 }
+                else {
+                    EventManager.Instance.AddEventListener("Event_Client_OnClientStopped", Event_Client_OnClientStopped);
+                }
+
                 EventManager.Instance.AddEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
 
                 return true;
@@ -402,7 +430,15 @@ namespace oomtm450PuckMod_CurvedStick {
                     EventManager.Instance.RemoveEventListener("Event_OnClientConnected", Event_OnClientConnected);
                     EventManager.Instance.RemoveEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
                 }
+                else {
+                    EventManager.Instance.RemoveEventListener("Event_Client_OnClientStopped", Event_Client_OnClientStopped);
+                }
+
                 EventManager.Instance.RemoveEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
+
+                _hasRegisteredWithNamedMessageHandler = false;
+                _serverHasResponded = false;
+                _askServerForStartupDataCount = 0;
 
                 Logging.Log($"Disabling...", _serverConfig, true);
 
