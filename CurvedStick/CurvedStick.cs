@@ -22,7 +22,7 @@ namespace oomtm450PuckMod_CurvedStick {
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
         #endregion
 
-        #region Fields
+        #region Fields/Properties
         /// <summary>
         /// Harmony, harmony instance to patch the Puck's code.
         /// </summary>
@@ -31,14 +31,16 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// ServerConfig, config set and sent by the server.
         /// </summary>
-        private static ServerConfig _serverConfig = new ServerConfig();
+        private static ServerConfig ServerConfig { get; set; } = new ServerConfig();
 
         /// <summary>
         /// ServerConfig, config set by the client.
         /// </summary>
-        private static ClientConfig _clientConfig = new ClientConfig();
+        private static ClientConfig ClientConfig { get; set; } = new ClientConfig();
 
         private static CurvedStickAsset _curvedStickAsset;
+
+        private static readonly LockDictionary<ulong, ClientConfig> _playersCurve = new LockDictionary<ulong, ClientConfig>();
 
         #region Client-Side
         private static DateTime _lastDateTimeAskStartupData = DateTime.MinValue;
@@ -55,7 +57,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
         #region Server-Side
         private static bool _updateAllSticksForReplay = false;
-        private static readonly LockList<string> _sticksToUpdate = new LockList<string>();
+        private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
         #endregion
         #endregion
 
@@ -63,7 +65,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Class that patches the Update event from ServerManager.
         /// </summary>
         [HarmonyPatch(typeof(ServerManager), "Update")]
-        public class ServerManager_Update_Patch {
+        public static class ServerManager_Update_Patch {
             [HarmonyPostfix]
             public static bool Prefix() {
                 try {
@@ -74,18 +76,18 @@ namespace oomtm450PuckMod_CurvedStick {
                         _updateAllSticksForReplay = false;
 
                         foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
-                            SetCurvedStick(player);
+                            SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
 
-                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER, _serverConfig);
+                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                     }
                     else {
-                        foreach (string steamId in _sticksToUpdate) {
-                            Player player = PlayerManager.Instance.GetPlayerBySteamId(steamId);
+                        foreach (ulong clientId in _sticksToUpdate) {
+                            Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
                             if (player == null || !player)
                                 continue;
 
-                            SetCurvedStick(PlayerManager.Instance.GetPlayerBySteamId(steamId));
-                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), steamId, Constants.FROM_SERVER, _serverConfig);
+                            SetCurvedStick(player, _playersCurve[clientId]);
+                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{FormatCurveStickForCommunication(_playersCurve[clientId])}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         }
                     }
 
@@ -103,14 +105,14 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Class that patches the UpdateStick event from Stick.
         /// </summary>
         [HarmonyPatch(typeof(Stick), nameof(Stick.UpdateStick))]
-        public class Stick_UpdateStick_Patch {
+        public static class Stick_UpdateStick_Patch {
             [HarmonyPostfix]
             public static void Postfix(Stick __instance) {
                 try {
                     if (!ServerFunc.IsDedicatedServer())
                         return;
 
-                    Logging.Log("Stick_UpdateStick_Patch", _serverConfig);
+                    Logging.Log("Stick_UpdateStick_Patch", ServerConfig);
                     SetCurvedStick(__instance.Player);
                 }
                 catch (Exception ex) {
@@ -123,14 +125,14 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Class that patches the Server_SpawnStick event from Player.
         /// </summary>
         [HarmonyPatch(typeof(Player), nameof(Player.Server_SpawnStick))]
-        public class Player_Server_SpawnStick_Patch {
+        public static class Player_Server_SpawnStick_Patch {
             [HarmonyPostfix]
             public static void Postfix(Player __instance, Vector3 position, Quaternion rotation, PlayerRole role) {
                 try {
                     if (!ServerFunc.IsDedicatedServer())
                         return;
 
-                    Logging.Log("Player_Server_SpawnStick_Patch", _serverConfig);
+                    Logging.Log("Player_Server_SpawnStick_Patch", ServerConfig);
                     //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 50, Timeout.Infinite);
                     //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 100, Timeout.Infinite);
                     new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 150, Timeout.Infinite);
@@ -154,20 +156,117 @@ namespace oomtm450PuckMod_CurvedStick {
                         return;
 
                     if (!_hasRegisteredWithNamedMessageHandler || !_serverHasResponded) {
-                        //Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_SERVER}.", _clientConfig);
-                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_SERVER, ReceiveData);
+                        //Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_SERVER}.", ClientConfig);
+                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_SERVER_TO_CLIENT, ReceiveData);
                         _hasRegisteredWithNamedMessageHandler = true;
 
                         DateTime now = DateTime.UtcNow;
                         if (_lastDateTimeAskStartupData + TimeSpan.FromSeconds(1) < now && _askServerForStartupDataCount++ < 10) {
                             _lastDateTimeAskStartupData = now;
-                            NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT, _clientConfig);
+                            NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT_TO_SERVER, ClientConfig);
                         }
                     }
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in UIScoreboard_UpdateServer_Patch Postfix().\n{ex}");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Class that patches the Client_SendClientChatMessage event from UIChat.
+        /// </summary>
+        [HarmonyPatch(typeof(UIChat), nameof(UIChat.Client_SendClientChatMessage))]
+        public class UIChat_Client_SendClientChatMessage_Patch {
+            [HarmonyPrefix]
+            public static bool Prefix(string message, bool useTeamChat) {
+                try {
+                    // If this is the server, do not use the patch.
+                    if (ServerFunc.IsDedicatedServer())
+                        return true;
+
+                    if (message.StartsWith(@"/")) {
+                        message = message.ToLowerInvariant();
+
+                        bool changeCurve = false;
+                        if (message.StartsWith(@"/heelcurve")) {
+                            message = message.Replace(@"/heelcurve", "").Trim();
+
+                            if (string.IsNullOrEmpty(message))
+                                UIChat.Instance.AddChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
+                            else {
+                                if (int.TryParse(message, out int heelCurveValue)) {
+                                    if (heelCurveValue > 100)
+                                        heelCurveValue = 100;
+                                    else if (heelCurveValue < 0)
+                                        heelCurveValue = 0;
+
+                                    ClientConfig.HeelCurve = heelCurveValue;
+                                    changeCurve = true;
+                                }
+                            }
+                        }
+                        else if (message.StartsWith(@"/middlecurve")) {
+                            message = message.Replace(@"/middlecurve", "").Trim();
+
+                            if (string.IsNullOrEmpty(message))
+                                UIChat.Instance.AddChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
+                            else {
+                                if (int.TryParse(message, out int middleCurveValue)) {
+                                    if (middleCurveValue > 100)
+                                        middleCurveValue = 100;
+                                    else if (middleCurveValue < 0)
+                                        middleCurveValue = 0;
+
+                                    ClientConfig.MiddleCurve = middleCurveValue;
+                                    changeCurve = true;
+                                }
+                            }
+                        }
+                        else if (message.StartsWith(@"/toecurve")) {
+                            message = message.Replace(@"/toecurve", "").Trim();
+
+                            if (string.IsNullOrEmpty(message))
+                                UIChat.Instance.AddChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
+                            else {
+                                if (int.TryParse(message, out int toeCurveValue)) {
+                                    if (toeCurveValue > 100)
+                                        toeCurveValue = 100;
+                                    else if (toeCurveValue < 0)
+                                        toeCurveValue = 0;
+
+                                    ClientConfig.ToeCurve = toeCurveValue;
+                                    changeCurve = true;
+                                }
+                            }
+                        }
+                        else if (message.StartsWith(@"/tipcurve")) {
+                            message = message.Replace(@"/tipcurve", "").Trim();
+
+                            if (string.IsNullOrEmpty(message))
+                                UIChat.Instance.AddChatMessage($"The tip curve is {ClientConfig.TipCurve}");
+                            else {
+                                if (int.TryParse(message, out int tipCurveValue)) {
+                                    if (tipCurveValue > 100)
+                                        tipCurveValue = 100;
+                                    else if (tipCurveValue < 0)
+                                        tipCurveValue = 0;
+
+                                    ClientConfig.TipCurve = tipCurveValue;
+                                    changeCurve = true;
+                                }
+                            }
+                        }
+
+                        if (changeCurve)
+                            SendNewCurvedStickValues();
+                    }
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in {nameof(UIChat_Client_SendClientChatMessage_Patch)} Prefix().\n{ex}");
+                }
+
+                return true;
             }
         }
 
@@ -192,17 +291,39 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!ServerFunc.IsDedicatedServer())
                 return;
 
-            Logging.Log("Event_OnClientConnected", _serverConfig);
+            Logging.Log("Event_OnClientConnected", ServerConfig);
 
             try {
                 if (NetworkManager.Singleton != null && !_hasRegisteredWithNamedMessageHandler) {
-                    Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT}.", _serverConfig);
-                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT, ReceiveData);
+                    Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT_TO_SERVER}.", ServerConfig);
+                    NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT_TO_SERVER, ReceiveData);
                     _hasRegisteredWithNamedMessageHandler = true;
                 }
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in Event_OnClientConnected.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_OnClientConnected)}.\n{ex}");
+            }
+        }
+
+        /// <summary>
+        /// Method called when a client has connected (joined a server) on the server-side.
+        /// Used to set server-sided stuff after the game has loaded.
+        /// </summary>
+        /// <param name="message">Dictionary of string and object, content of the event.</param>
+        public static void Event_OnClientDisconnected(Dictionary<string, object> message) {
+            if (!ServerFunc.IsDedicatedServer())
+                return;
+
+            Logging.Log("Event_OnClientDisconnected", ServerConfig);
+
+            try {
+                ulong clientId = (ulong)message["clientId"];
+
+                //_sentOutOfDateMessage.Remove(clientId);
+                _playersCurve.Remove(clientId);
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(Event_OnClientDisconnected)}.\n{ex}");
             }
         }
 
@@ -215,12 +336,10 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 string dataName, dataStr;
                 if (clientId == NetworkManager.ServerClientId) { // If client Id is 0, we received data from the server, so we are client-sided.
-                    //Logging.Log("ReceiveData", _clientConfig);
-                    (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, _clientConfig);
+                    (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, ClientConfig);
                 }
                 else {
-                    //Logging.Log("ReceiveData", _serverConfig);
-                    (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, _serverConfig);
+                    (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, ServerConfig);
                 }
 
                 switch (dataName) {
@@ -230,15 +349,25 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (MOD_VERSION == dataStr) // TODO : Move the kick later so that it doesn't break anything. Maybe even add a chat message and a 3-5 sec wait.
                             break;
 
-                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_CLIENT, _serverConfig);
+                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_CLIENT_TO_SERVER, ServerConfig);
                         break;
 
                     case nameof(SetCurvedStick):
-                        Player player = PlayerManager.Instance.GetPlayerBySteamId(dataStr);
+                        string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
+                        if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
+                            _playersCurve.Add(clientId, curveSetCurvedStick = new ClientConfig());
+                        }
+
+                        curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
+                        curveSetCurvedStick.MiddleCurve = int.Parse(splittedDataStrSetCurvedStick[2]);
+                        curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
+                        curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
+
+                        Player player = PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(splittedDataStrSetCurvedStick[0]));
                         if (player == null || !player)
                             return;
 
-                        SetCurvedStick(player);
+                        SetCurvedStick(player, curveSetCurvedStick);
                         break;
 
                     case nameof(SetCurvedStick) + "ALLREPLAY":
@@ -246,14 +375,14 @@ namespace oomtm450PuckMod_CurvedStick {
                             return;
 
                         foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
-                            SetCurvedStick(_player);
+                            SetCurvedStick(_player, _playersCurve[_player.OwnerClientId]);
                         break;
 
                     case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
                         if (dataStr != "1")
                             break;
 
-                        Logging.Log($"Kicking client {clientId}.", _serverConfig);
+                        Logging.Log($"Kicking client {clientId}.", ServerConfig);
                         NetworkManager.Singleton.DisconnectClient(clientId,
                             $"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
                         break;
@@ -262,7 +391,23 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (dataStr != "1")
                             break;
 
-                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER, _serverConfig);
+                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                        break;
+
+                    case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
+                        string[] splittedDataStrNewCurveStickValues = dataStr.Split(';');
+                        if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveNewCurveStickValues)) {
+                            _playersCurve.Add(clientId, curveNewCurveStickValues = new ClientConfig());
+                        }
+
+                        curveNewCurveStickValues.HeelCurve = int.Parse(splittedDataStrNewCurveStickValues[0]);
+                        curveNewCurveStickValues.MiddleCurve = int.Parse(splittedDataStrNewCurveStickValues[1]);
+                        curveNewCurveStickValues.ToeCurve = int.Parse(splittedDataStrNewCurveStickValues[2]);
+                        curveNewCurveStickValues.TipCurve = int.Parse(splittedDataStrNewCurveStickValues[3]);
+
+                        _sticksToUpdate.Add(clientId);
+
+                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{dataStr}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
                 }
             }
@@ -272,14 +417,14 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void UpdateStickTimerCallback(object stateInfo) {
-            _sticksToUpdate.Add((string)stateInfo);
+            _sticksToUpdate.Add((ulong)stateInfo);
         }
 
         private static void UpdateAllSticksForReplayTimerCallback(object stateInfo) {
             _updateAllSticksForReplay = true;
         }
 
-        private static void SetCurvedStick(Player player) {
+        private static void SetCurvedStick(Player player, ClientConfig curve) {
             if (!player || player.Role.Value != PlayerRole.Attacker)
                 return;
 
@@ -327,28 +472,43 @@ namespace oomtm450PuckMod_CurvedStick {
                 // Set blade tape mesh.
                 stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.TAPE];
             }
+            else {
+                // Set blade collider for puck.
+                GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
+                MeshCollider bladePuckMeshCollider = bladePuckGameObject.GetComponent<MeshCollider>();
+                bladePuckMeshCollider.convex = true;
+                bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
+                //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
+                //mf.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
+                //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
+                //mr.material = new Material(stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshRenderer>().material) {
+                //    color = new Color(1, 0, 0, 0.8f),
+                //};
 
-            // Set blade collider for puck.
-            GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
-            MeshCollider bladePuckMeshCollider = bladePuckGameObject.GetComponent<MeshCollider>();
-            bladePuckMeshCollider.convex = true;
-            bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-            //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
-            //mf.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-            //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
-            //mr.material = new Material(stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshRenderer>().material) {
-            //    color = new Color(1, 0, 0, 0.8f),
-            //};
+                // Set blade collider for stick.
+                GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
+                MeshCollider bladeStickMeshCollider = bladeStickGameObject.GetComponent<MeshCollider>();
+                bladeStickMeshCollider.convex = true;
+                bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
+            }
+        }
 
-            // Set blade collider for stick.
-            GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
-            MeshCollider bladeStickMeshCollider = bladeStickGameObject.GetComponent<MeshCollider>();
-            bladeStickMeshCollider.convex = true;
-            bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
+        private static void SendNewCurvedStickValues() {
+            NetworkCommunication.SendData(
+                Constants.NEW_CURVED_STICK_VALUES,
+                FormatCurveStickForCommunication(ClientConfig),
+                NetworkManager.ServerClientId,
+                Constants.FROM_CLIENT_TO_SERVER,
+                ClientConfig);
+        }
+
+        private static string FormatCurveStickForCommunication(ClientConfig config) {
+            return $"{config.HeelCurve};{config.MiddleCurve};{config.ToeCurve};{config.TipCurve}";
         }
 
         private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
-            SetCurvedStick((Player)message["player"]);
+            Player player = (Player)message["player"];
+            SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
         }
 
         /// <summary>
@@ -361,7 +521,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 return;
 
             try {
-                _serverConfig = new ServerConfig();
+                ServerConfig = new ServerConfig();
 
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
@@ -377,31 +537,32 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <returns>Bool, true if the mod successfully enabled.</returns>
         public bool OnEnable() {
             try {
-                Logging.Log($"Enabling...", _serverConfig, true);
+                Logging.Log($"Enabling...", ServerConfig, true);
 
                 _harmony.PatchAll();
 
-                Logging.Log($"Enabled.", _serverConfig, true);
+                Logging.Log($"Enabled.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
                     if (NetworkManager.Singleton != null && NetworkManager.Singleton.CustomMessagingManager != null) {
-                        Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT}.", _serverConfig);
-                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT, ReceiveData);
+                        Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_CLIENT_TO_SERVER}.", ServerConfig);
+                        NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_CLIENT_TO_SERVER, ReceiveData);
                         _hasRegisteredWithNamedMessageHandler = true;
                     }
 
-                    Logging.Log("Setting server sided config.", _serverConfig, true);
-                    _serverConfig = ServerConfig.ReadConfig(ServerManager.Instance.AdminSteamIds);
+                    Logging.Log("Setting server sided config.", ServerConfig, true);
+                    ServerConfig = ServerConfig.ReadConfig(ServerManager.Instance.AdminSteamIds);
                 }
                 else {
-                    Logging.Log("Setting client sided config.", _serverConfig, true);
-                    _clientConfig = ClientConfig.ReadConfig();
+                    Logging.Log("Setting client sided config.", ServerConfig, true);
+                    ClientConfig = ClientConfig.ReadConfig();
                 }
 
-                Logging.Log("Subscribing to events.", _serverConfig, true);
+                Logging.Log("Subscribing to events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
                     EventManager.Instance.AddEventListener("Event_OnClientConnected", Event_OnClientConnected);
+                    EventManager.Instance.AddEventListener("Event_OnClientDisconnected", Event_OnClientDisconnected);
                     EventManager.Instance.AddEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
                 }
                 else {
@@ -424,10 +585,11 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <returns>Bool, true if the mod successfully disabled.</returns>
         public bool OnDisable() {
             try {
-                Logging.Log("Unsubscribing from events.", _serverConfig, true);
+                Logging.Log("Unsubscribing from events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
                     EventManager.Instance.RemoveEventListener("Event_OnClientConnected", Event_OnClientConnected);
+                    EventManager.Instance.RemoveEventListener("Event_OnClientDisconnected", Event_OnClientDisconnected);
                     EventManager.Instance.RemoveEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
                 }
                 else {
@@ -439,12 +601,13 @@ namespace oomtm450PuckMod_CurvedStick {
                 _hasRegisteredWithNamedMessageHandler = false;
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
+                _playersCurve.Clear();
 
-                Logging.Log($"Disabling...", _serverConfig, true);
+                Logging.Log($"Disabling...", ServerConfig, true);
 
                 _harmony.UnpatchSelf();
 
-                Logging.Log($"Disabled.", _serverConfig, true);
+                Logging.Log($"Disabled.", ServerConfig, true);
                 return true;
             }
             catch (Exception ex) {

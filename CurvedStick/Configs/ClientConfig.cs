@@ -19,6 +19,26 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         /// Bool, true if the info logs must be printed.
         /// </summary>
         public bool LogInfo { get; set; } = true;
+
+        /// <summary>
+        /// Int, curve of the heel.
+        /// </summary>
+        public int HeelCurve { get; set; } = 0;
+
+        /// <summary>
+        /// Int, curve of the middle.
+        /// </summary>
+        public int MiddleCurve { get; set; } = 0;
+
+        /// <summary>
+        /// Int, curve of the toe.
+        /// </summary>
+        public int ToeCurve { get; set; } = 0;
+
+        /// <summary>
+        /// Int, curve of the tip.
+        /// </summary>
+        public int TipCurve { get; set; } = 0;
         #endregion
 
         /// <summary>
