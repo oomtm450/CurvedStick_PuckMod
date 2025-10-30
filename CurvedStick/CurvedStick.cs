@@ -68,7 +68,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// </summary>
         [HarmonyPatch(typeof(ServerManager), "Update")]
         public static class ServerManager_Update_Patch {
-            [HarmonyPostfix]
+            [HarmonyPrefix]
             public static bool Prefix() {
                 try {
                     if (!ServerFunc.IsDedicatedServer())
@@ -96,7 +96,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     _sticksToUpdate.Clear();
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in Stick_UpdateStick_Patch Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(ServerManager_Update_Patch)} Prefix().\n{ex}");
                 }
 
                 return true;
@@ -474,8 +474,6 @@ namespace oomtm450PuckMod_CurvedStick {
                         curveNewCurveStickValues.TipCurve = int.Parse(splittedDataStrNewCurveStickValues[3]);
 
                         _sticksToUpdate.Add(clientId);
-
-                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{dataStr}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
                 }
             }
