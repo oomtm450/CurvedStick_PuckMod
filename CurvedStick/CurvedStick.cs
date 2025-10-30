@@ -20,6 +20,8 @@ namespace oomtm450PuckMod_CurvedStick {
         private const string MOD_VERSION = "0.2.0DEV7";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
+
+        private const string HELP_MESSAGE = "Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100,0-100,0-100,0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n";
         #endregion
 
         #region Fields/Properties
@@ -323,8 +325,8 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (message.StartsWith(@"/")) {
                         message = message.ToLowerInvariant();
 
-                        if (message.StartsWith(@"/help"))
-                            UIChat.Instance.AddChatMessage("Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100,0-100,0-100,0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n");
+                        if (message.StartsWith(@"/help") || message.StartsWith(@"/curvehelp"))
+                            UIChat.Instance.AddChatMessage(HELP_MESSAGE);
                     }
                 }
                 catch (Exception ex) {
