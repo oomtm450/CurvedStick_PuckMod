@@ -103,5 +103,11 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
 
             return config;
         }
+
+        internal void SaveConfig() {
+            string rootPath = Path.GetFullPath(".");
+            string configPath = Path.Combine(rootPath, CONFIG_DATA_NAME);
+            File.WriteAllText(configPath, this.ToString());
+        }
     }
 }

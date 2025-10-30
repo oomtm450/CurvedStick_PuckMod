@@ -188,7 +188,36 @@ namespace oomtm450PuckMod_CurvedStick {
                         message = message.ToLowerInvariant();
 
                         bool changeCurve = false;
-                        if (message.StartsWith(@"/heelcurve")) {
+                        if (message.StartsWith(@"/curve")) {
+                            message = message.Replace(@"/curve", "").Trim();
+
+                            if (string.IsNullOrEmpty(message))
+                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
+                            else {
+                                string[] splittedMessageCurve = message.Split(' ');
+                                for (int i = 0; i < splittedMessageCurve.Length; i++) {
+                                    if (int.TryParse(message, out int curveValue)) {
+                                        if (curveValue > 100) // 0.1
+                                            curveValue = 100;
+                                        else if (curveValue < 0)
+                                            curveValue = 0;
+
+                                        ClientConfig.HeelCurve = curveValue;
+                                        changeCurve = true;
+                                    }
+                                }
+                                if (int.TryParse(message, out int heelCurveValue)) {
+                                    if (heelCurveValue > 100) // 0.1
+                                        heelCurveValue = 100;
+                                    else if (heelCurveValue < 0)
+                                        heelCurveValue = 0;
+
+                                    ClientConfig.HeelCurve = heelCurveValue;
+                                    changeCurve = true;
+                                }
+                            }
+                        }
+                        else if (message.StartsWith(@"/heelcurve")) {
                             message = message.Replace(@"/heelcurve", "").Trim();
 
                             if (string.IsNullOrEmpty(message))
@@ -266,6 +295,25 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
 
                 return true;
+            }
+
+            [HarmonyPostfix]
+            public static void Postfix(string message, bool useTeamChat) {
+                try {
+                    // If this is the server, do not use the patch.
+                    if (ServerFunc.IsDedicatedServer())
+                        return;
+
+                    if (message.StartsWith(@"/")) {
+                        message = message.ToLowerInvariant();
+
+                        if (message.StartsWith(@"/help"))
+                            UIChat.Instance.AddChatMessage("Curve stick commands:\n* <b>/curve</b> - Adjust all curve values (0-100 0-100 0-100 0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n");
+                    }
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in {nameof(UIChat_Client_SendClientChatMessage_Patch)} Postfix().\n{ex}");
+                }
             }
         }
 
@@ -696,6 +744,7 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SendNewCurvedStickValues() {
+            ClientConfig.SaveConfig();
             NetworkCommunication.SendData(
                 Constants.NEW_CURVED_STICK_VALUES,
                 FormatCurveStickForCommunication(ClientConfig),
