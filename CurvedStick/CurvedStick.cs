@@ -197,23 +197,39 @@ namespace oomtm450PuckMod_CurvedStick {
                                 string[] splittedMessageCurve = message.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
                                     if (int.TryParse(message, out int curveValue)) {
-                                        if (curveValue > 100) // 0.1
-                                            curveValue = 100;
-                                        else if (curveValue < 0)
-                                            curveValue = 0;
+                                        if (i == 3) {
+                                            if (curveValue > 500) // 0.5
+                                                curveValue = 500;
+                                            else if (curveValue < 0)
+                                                curveValue = 0;
+                                        }
+                                        else {
+                                            if (curveValue > 100) // 0.1
+                                                curveValue = 100;
+                                            else if (curveValue < 0)
+                                                curveValue = 0;
+                                        }
 
-                                        ClientConfig.HeelCurve = curveValue;
+                                        switch (i) {
+                                            case 0:
+                                                ClientConfig.HeelCurve = curveValue;
+                                                break;
+
+                                            case 1:
+                                                ClientConfig.MiddleCurve = curveValue;
+                                                break;
+
+                                            case 2:
+                                                ClientConfig.ToeCurve = curveValue;
+                                                break;
+
+                                            case 3:
+                                                ClientConfig.TipCurve = curveValue;
+                                                break;
+                                        }
+
                                         changeCurve = true;
                                     }
-                                }
-                                if (int.TryParse(message, out int heelCurveValue)) {
-                                    if (heelCurveValue > 100) // 0.1
-                                        heelCurveValue = 100;
-                                    else if (heelCurveValue < 0)
-                                        heelCurveValue = 0;
-
-                                    ClientConfig.HeelCurve = heelCurveValue;
-                                    changeCurve = true;
                                 }
                             }
                         }
