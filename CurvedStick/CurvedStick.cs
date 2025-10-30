@@ -665,9 +665,12 @@ namespace oomtm450PuckMod_CurvedStick {
                 toeTransform.localRotation.w);
 
             Transform tipTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Tip")).transform;
+            float tipYValue = handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF / -2f : curve.TipCurveF / 2f;
+            if (tipYValue > 0.5f)
+                tipYValue = 0.5f;
             tipTransform.localRotation = new Quaternion(
                 tipTransform.localRotation.x,
-                handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF / -10f : curve.TipCurveF / 10f,
+                tipYValue,
                 handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF : curve.TipCurveF / -1,
                 tipTransform.localRotation.w);
         }
