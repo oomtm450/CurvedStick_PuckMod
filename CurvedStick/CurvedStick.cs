@@ -17,11 +17,11 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV7";
+        private const string MOD_VERSION = "0.2.0DEV8";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
-        private const string HELP_MESSAGE = "Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100,0-100,0-100,0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n";
+        private const string HELP_MESSAGE = "Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100 0-100 0-100 0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n";
         #endregion
 
         #region Fields/Properties
@@ -194,11 +194,11 @@ namespace oomtm450PuckMod_CurvedStick {
                             message = message.Replace(@"/curve", "").Trim();
 
                             if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ',')}");
+                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
                             else {
-                                string[] splittedMessageCurve = message.Split(',');
+                                string[] splittedMessageCurve = message.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
-                                    if (int.TryParse(message, out int curveValue)) {
+                                    if (int.TryParse(splittedMessageCurve[i], out int curveValue)) {
                                         if (i == 3) {
                                             if (curveValue > 500) // 0.5
                                                 curveValue = 500;
@@ -459,7 +459,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve)
-                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                            NetworkCommunication.SendData(nameof(SetCurvedStick), $"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}", clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
 
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
