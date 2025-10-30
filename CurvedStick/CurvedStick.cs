@@ -192,9 +192,9 @@ namespace oomtm450PuckMod_CurvedStick {
                             message = message.Replace(@"/curve", "").Trim();
 
                             if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
+                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ',')}");
                             else {
-                                string[] splittedMessageCurve = message.Split(' ');
+                                string[] splittedMessageCurve = message.Split(',');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
                                     if (int.TryParse(message, out int curveValue)) {
                                         if (i == 3) {
@@ -324,7 +324,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         message = message.ToLowerInvariant();
 
                         if (message.StartsWith(@"/help"))
-                            UIChat.Instance.AddChatMessage("Curve stick commands:\n* <b>/curve</b> - Adjust all curve values (0-100 0-100 0-100 0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n");
+                            UIChat.Instance.AddChatMessage("Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100,0-100,0-100,0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n");
                     }
                 }
                 catch (Exception ex) {
