@@ -440,6 +440,8 @@ namespace oomtm450PuckMod_CurvedStick {
                             break;
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve)
+                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
 
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
