@@ -134,11 +134,10 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (!ServerFunc.IsDedicatedServer())
                         return;
 
-                    Logging.Log("Player_Server_SpawnStick_Patch", ServerConfig);
                     new Timer(UpdateStickTimerCallback, __instance.OwnerClientId, 150, Timeout.Infinite);
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in Player_Server_SpawnStick_Patch Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(Player_Server_SpawnStick_Patch)} Postfix().\n{ex}");
                 }
             }
         }
@@ -169,7 +168,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in UIScoreboard_UpdateServer_Patch Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(UIScoreboard_UpdatePlayer_Patch)} Postfix().\n{ex}");
                 }
             }
         }
