@@ -26,9 +26,21 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         public int HeelCurve { get; set; } = 0;
 
         /// <summary>
+        /// Float, curve of the heel for the rotation.
+        /// </summary>
+        [JsonIgnore]
+        public float HeelCurveF => ((float)HeelCurve) / 1000f;
+
+        /// <summary>
         /// Int, curve of the middle.
         /// </summary>
         public int MiddleCurve { get; set; } = 0;
+
+        /// <summary>
+        /// Float, curve of the middle for the rotation.
+        /// </summary>
+        [JsonIgnore]
+        public float MiddleCurveF => ((float)MiddleCurve) / 1000f;
 
         /// <summary>
         /// Int, curve of the toe.
@@ -36,9 +48,21 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         public int ToeCurve { get; set; } = 0;
 
         /// <summary>
+        /// Float, curve of the toe for the rotation.
+        /// </summary>
+        [JsonIgnore]
+        public float ToeCurveF => ((float)ToeCurve) / 1000f;
+
+        /// <summary>
         /// Int, curve of the tip.
         /// </summary>
         public int TipCurve { get; set; } = 0;
+
+        /// <summary>
+        /// Float, curve of the tip for the rotation.
+        /// </summary>
+        [JsonIgnore]
+        public float TipCurveF => ((float)TipCurve) / 1000f;
         #endregion
 
         /// <summary>
@@ -46,7 +70,7 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         /// </summary>
         /// <returns>String, serialized ClientConfig.</returns>
         public override string ToString() {
-            return JsonConvert.SerializeObject(this);
+            return JsonConvert.SerializeObject(this, Formatting.Indented);
         }
 
         /// <summary>

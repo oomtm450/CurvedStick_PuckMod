@@ -27,7 +27,7 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         /// </summary>
         /// <returns>String, serialized config.</returns>
         public override string ToString() {
-            return JsonConvert.SerializeObject(this);
+            return JsonConvert.SerializeObject(this, Formatting.Indented);
         }
 
         /// <summary>

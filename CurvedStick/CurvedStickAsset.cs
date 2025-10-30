@@ -18,14 +18,7 @@ namespace oomtm450PuckMod_CurvedStick {
         internal const string TAPE = "tape";
 
         internal const string LEFT = "left";
-        internal const string LEFT_STICK = LEFT + STICK;
-        internal const string LEFT_BLADE = LEFT + BLADE;
-        internal const string LEFT_TAPE = LEFT + TAPE;
-
         internal const string RIGHT = "right";
-        internal const string RIGHT_STICK = RIGHT + STICK;
-        internal const string RIGHT_BLADE = RIGHT + BLADE;
-        internal const string RIGHT_TAPE = RIGHT + TAPE;
         #endregion
 
         #region Fields
@@ -34,7 +27,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
         #region Properties
         internal List<string> Errors { get; } = new List<string>();
-        internal Dictionary<string, Mesh> Meshes { get; } = new Dictionary<string, Mesh>();
+        internal Dictionary<string, GameObject> Meshes { get; } = new Dictionary<string, GameObject>();
         #endregion
 
         #region Methods/Functions
@@ -79,23 +72,16 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     new Mesh().UploadMeshData(true);
 
-                    Mesh mesh = _assetBundle.LoadAsset<Mesh>("assets/leftstickfixed.fbx");
-                    Meshes.Add(LEFT_STICK, mesh);
+                    GameObject mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/stick.fbx");
+                    Meshes.Add(STICK, mesh);
 
-                    mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladefixed.fbx");
-                    Meshes.Add(LEFT_BLADE, mesh);
+                    mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/blade.fbx");
+                    Meshes.Add(BLADE, mesh);
 
-                    mesh = _assetBundle.LoadAsset<Mesh>("assets/leftbladetape.fbx");
-                    Meshes.Add(LEFT_TAPE, mesh);
+                    //mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/tape.fbx"); // TODO
+                    Meshes.Add(TAPE, null);
 
-                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightstickfixed.fbx");
-                    Meshes.Add(RIGHT_STICK, mesh);
-
-                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightbladefixed.fbx");
-                    Meshes.Add(RIGHT_BLADE, mesh);
-
-                    mesh = _assetBundle.LoadAsset<Mesh>("assets/rightbladetape.fbx");
-                    Meshes.Add(RIGHT_TAPE, mesh);
+                    _assetBundle.Unload(false);
 
                     break;
                 }

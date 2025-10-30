@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.1.0DEV16";
+        private const string MOD_VERSION = "0.2.0DEV7";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
         #endregion
@@ -38,7 +38,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// </summary>
         private static ClientConfig ClientConfig { get; set; } = new ClientConfig();
 
-        private static CurvedStickAsset _curvedStickAsset;
+        private static CurvedStickAsset _curvedStickAsset = null;
 
         private static readonly LockDictionary<ulong, ClientConfig> _playersCurve = new LockDictionary<ulong, ClientConfig>();
 
@@ -133,9 +133,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         return;
 
                     Logging.Log("Player_Server_SpawnStick_Patch", ServerConfig);
-                    //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 50, Timeout.Infinite);
-                    //new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 100, Timeout.Infinite);
-                    new Timer(UpdateStickTimerCallback, __instance.SteamId.Value.ToString(), 150, Timeout.Infinite);
+                    new Timer(UpdateStickTimerCallback, __instance.OwnerClientId, 150, Timeout.Infinite);
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in Player_Server_SpawnStick_Patch Postfix().\n{ex}");
@@ -164,6 +162,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (_lastDateTimeAskStartupData + TimeSpan.FromSeconds(1) < now && _askServerForStartupDataCount++ < 10) {
                             _lastDateTimeAskStartupData = now;
                             NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT_TO_SERVER, ClientConfig);
+                            SendNewCurvedStickValues();
                         }
                     }
                 }
@@ -196,7 +195,7 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
                             else {
                                 if (int.TryParse(message, out int heelCurveValue)) {
-                                    if (heelCurveValue > 100)
+                                    if (heelCurveValue > 100) // 0.1
                                         heelCurveValue = 100;
                                     else if (heelCurveValue < 0)
                                         heelCurveValue = 0;
@@ -213,7 +212,7 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
                             else {
                                 if (int.TryParse(message, out int middleCurveValue)) {
-                                    if (middleCurveValue > 100)
+                                    if (middleCurveValue > 100) // 0.1
                                         middleCurveValue = 100;
                                     else if (middleCurveValue < 0)
                                         middleCurveValue = 0;
@@ -230,7 +229,7 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
                             else {
                                 if (int.TryParse(message, out int toeCurveValue)) {
-                                    if (toeCurveValue > 100)
+                                    if (toeCurveValue > 100) // 0.1
                                         toeCurveValue = 100;
                                     else if (toeCurveValue < 0)
                                         toeCurveValue = 0;
@@ -247,8 +246,8 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The tip curve is {ClientConfig.TipCurve}");
                             else {
                                 if (int.TryParse(message, out int tipCurveValue)) {
-                                    if (tipCurveValue > 100)
-                                        tipCurveValue = 100;
+                                    if (tipCurveValue > 500) // 0.5
+                                        tipCurveValue = 500;
                                     else if (tipCurveValue < 0)
                                         tipCurveValue = 0;
 
@@ -355,7 +354,8 @@ namespace oomtm450PuckMod_CurvedStick {
                     case nameof(SetCurvedStick):
                         string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
                         if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
-                            _playersCurve.Add(clientId, curveSetCurvedStick = new ClientConfig());
+                            curveSetCurvedStick = new ClientConfig();
+                            _playersCurve.Add(clientId, curveSetCurvedStick);
                         }
 
                         curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
@@ -397,7 +397,8 @@ namespace oomtm450PuckMod_CurvedStick {
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
                         string[] splittedDataStrNewCurveStickValues = dataStr.Split(';');
                         if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveNewCurveStickValues)) {
-                            _playersCurve.Add(clientId, curveNewCurveStickValues = new ClientConfig());
+                            curveNewCurveStickValues = new ClientConfig();
+                            _playersCurve.Add(clientId, curveNewCurveStickValues);
                         }
 
                         curveNewCurveStickValues.HeelCurve = int.Parse(splittedDataStrNewCurveStickValues[0]);
@@ -428,9 +429,10 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!player || player.Role.Value != PlayerRole.Attacker)
                 return;
 
-            GameObject curvedStickAssetObject = new GameObject(Constants.MOD_NAME + "CurvedStickAsset");
-            _curvedStickAsset = curvedStickAssetObject.AddComponent<CurvedStickAsset>();
-            _curvedStickAsset.LoadAssets();
+            if (_curvedStickAsset == null) {
+                _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
+                _curvedStickAsset.LoadAssets();
+            }
 
             if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
                 if (_curvedStickAsset.Meshes.Count == 0)
@@ -454,43 +456,240 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!stickMeshTransform)
                 return;
 
+            GameObject stickMesh = stickMeshTransform.gameObject;
+
             string handedness;
             if (player.Handedness.Value == PlayerHandedness.Right)
                 handedness = CurvedStickAsset.RIGHT;
             else
                 handedness = CurvedStickAsset.LEFT;
 
-            GameObject stickMesh = stickMeshTransform.gameObject;
-
             if (!ServerFunc.IsDedicatedServer()) {
-                GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
+                SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].GetComponentInChildren<SkinnedMeshRenderer>();
 
-                // Set stick mesh.
-                GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
-                stickGameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.STICK];
-
-                // Set blade tape mesh.
-                stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.TAPE];
+                SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handedness);
             }
             else {
+                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].GetComponentInChildren<SkinnedMeshRenderer>();
+
                 // Set blade collider for puck.
                 GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
-                MeshCollider bladePuckMeshCollider = bladePuckGameObject.GetComponent<MeshCollider>();
-                bladePuckMeshCollider.convex = true;
-                bladePuckMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-                //MeshFilter mf = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshFilter>();
-                //mf.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
-                //MeshRenderer mr = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject.AddComponent<MeshRenderer>();
-                //mr.material = new Material(stickMesh.transform.Find("stick_attacker").gameObject.transform.Find("Stick (Attacker)").gameObject.GetComponent<MeshRenderer>().material) {
-                //    color = new Color(1, 0, 0, 0.8f),
-                //};
+                SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
 
                 // Set blade collider for stick.
                 GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
-                MeshCollider bladeStickMeshCollider = bladeStickGameObject.GetComponent<MeshCollider>();
-                bladeStickMeshCollider.convex = true;
-                bladeStickMeshCollider.sharedMesh = _curvedStickAsset.Meshes[handedness + CurvedStickAsset.BLADE];
+                SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
             }
+        }
+
+        private static void SetCurvedStickMagicClient(GameObject stickMesh, SkinnedMeshRenderer prefabSkinnedMeshRenderer, ClientConfig curve,
+            string handedness) {
+            GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
+            GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
+
+            MeshRenderer originalMeshRenderer = null;
+            SkinnedMeshRenderer skinnedMeshRenderer = null;
+            bool replaceOldStick = true;
+            try {
+                originalMeshRenderer = stickGameObject.GetComponent<MeshRenderer>();
+                if (originalMeshRenderer == null) {
+                    replaceOldStick = false;
+                    skinnedMeshRenderer = stickGameObject.GetComponent<SkinnedMeshRenderer>();
+                }
+            }
+            catch {
+                replaceOldStick = false;
+                skinnedMeshRenderer = stickGameObject.GetComponent<SkinnedMeshRenderer>();
+            }
+
+            if (replaceOldStick) {
+                Material[] originalMeshRendererSharedMaterials = originalMeshRenderer.sharedMaterials;
+                UnityEngine.Object.DestroyImmediate(originalMeshRenderer);
+                UnityEngine.Object.DestroyImmediate(stickGameObject.GetComponent<MeshFilter>());
+
+                skinnedMeshRenderer = stickGameObject.AddComponent<SkinnedMeshRenderer>();
+                skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
+
+                // --- 1. Get the bone mapping ---
+                // Create a dictionary of the target skeleton's bones for efficient lookup
+                var boneMap = new Dictionary<string, Transform>();
+                var boneInfo = new Dictionary<string, BoneInfo>();
+                foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
+                    boneMap[t.name] = t;
+                    boneInfo[t.name] = new BoneInfo {
+                        name = t.name,
+                        localPosition = t.localPosition,
+                        localRotation = t.localRotation,
+                        localScale = t.localScale,
+                    };
+                }
+
+                // Create the new bones array for the SkinnedMeshRenderer
+                Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
+                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                    string boneName = prefabSkinnedMeshRenderer.bones[i].name;
+                    boneInfo[boneName].parentIndex = i;
+                    if (boneMap.TryGetValue(boneName, out Transform mappedBone)) {
+                        newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
+                    }
+                    else {
+                        Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
+                        return;
+                    }
+                }
+
+                // Store the parent index for each bone
+                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                    Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
+                    if (parent != null && boneMap.ContainsKey(parent.name))
+                        newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
+                    else
+                        newBones[i].SetParent(stickGameObject.transform, false);
+
+                    newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
+                    newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
+                    newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
+                }
+
+                skinnedMeshRenderer.bones = newBones;
+                skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
+                skinnedMeshRenderer.sharedMaterials = originalMeshRendererSharedMaterials;
+
+                skinnedMeshRenderer.rootBone.SetParent(stickGameObject.transform, false);
+            }
+
+            // Set stick mesh values.
+            SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
+
+            // TODO : Set blade tape mesh.
+            stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = null;
+            // TODO : Set tape mesh values.
+        }
+
+        private static void SetCurvedStickMagicServer(GameObject gameObject, SkinnedMeshRenderer prefabSkinnedMeshRenderer, ClientConfig curve,
+            string handedness) {
+            SkinnedMeshRenderer skinnedMeshRenderer = null;
+            bool replaceOldStick = false;
+            try {
+                skinnedMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
+                if (skinnedMeshRenderer == null)
+                    replaceOldStick = true;
+            }
+            catch {
+                replaceOldStick = true;
+            }
+
+            MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
+
+            if (replaceOldStick) {
+                meshCollider.convex = true;
+
+                skinnedMeshRenderer = gameObject.AddComponent<SkinnedMeshRenderer>();
+                skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
+
+                // --- 1. Get the bone mapping ---
+                // Create a dictionary of the target skeleton's bones for efficient lookup
+                var boneMap = new Dictionary<string, Transform>();
+                var boneInfo = new Dictionary<string, BoneInfo>();
+                foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
+                    boneMap[t.name] = t;
+                    boneInfo[t.name] = new BoneInfo {
+                        name = t.name,
+                        localPosition = t.localPosition,
+                        localRotation = t.localRotation,
+                        localScale = t.localScale,
+                    };
+                }
+                
+                // Create the new bones array for the SkinnedMeshRenderer
+                Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
+                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                    string boneName = prefabSkinnedMeshRenderer.bones[i].name;
+                    boneInfo[boneName].parentIndex = i;
+                    if (boneMap.TryGetValue(boneName, out Transform mappedBone)) {
+                        newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
+                    }
+                    else {
+                        Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
+                        return;
+                    }
+                }
+
+                // Store the parent index for each bone
+                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                    Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
+                    if (parent != null && boneMap.ContainsKey(parent.name))
+                        newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
+                    else
+                        newBones[i].SetParent(gameObject.transform, false);
+
+                    newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
+                    newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
+                    newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
+                }
+
+                skinnedMeshRenderer.bones = newBones;
+                skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
+
+                skinnedMeshRenderer.rootBone.SetParent(gameObject.transform, false);
+            }
+
+            // Set stick mesh values.
+            SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
+
+            Mesh colliderMesh = new Mesh();
+            skinnedMeshRenderer.BakeMesh(colliderMesh);
+            meshCollider.sharedMesh = colliderMesh;
+        }
+
+        private static void SetTransformRotationForCurve(SkinnedMeshRenderer skinnedMeshRenderer, string handedness, ClientConfig curve) {
+            Transform heelTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Heel")).transform;
+            heelTransform.localRotation = new Quaternion(
+                heelTransform.localRotation.x,
+                handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF / -2f : curve.HeelCurveF / 2f,
+                handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF : curve.HeelCurveF / -1,
+                heelTransform.localRotation.w);
+
+            Transform middleTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Middle")).transform;
+            middleTransform.localRotation = new Quaternion(
+                middleTransform.localRotation.x,
+                handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF / -2f : curve.MiddleCurveF / 2f,
+                handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF : curve.MiddleCurveF / -1,
+                middleTransform.localRotation.w);
+
+            Transform toeTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Toe")).transform;
+            toeTransform.localRotation = new Quaternion(
+                toeTransform.localRotation.x,
+                handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF / -2f : curve.ToeCurveF / 2f,
+                handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF : curve.ToeCurveF / -1,
+                toeTransform.localRotation.w);
+
+            Transform tipTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Tip")).transform;
+            tipTransform.localRotation = new Quaternion(
+                tipTransform.localRotation.x,
+                handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF / -10f : curve.TipCurveF / 10f,
+                handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF : curve.TipCurveF / -1,
+                tipTransform.localRotation.w);
+        }
+
+        private static Mesh DuplicateMesh(Mesh sourceMesh) {
+            Mesh targetMesh = new Mesh();
+            targetMesh.name = sourceMesh.name + "_" + new System.Random().Next(1000000);
+            targetMesh.vertices = sourceMesh.vertices;
+            targetMesh.normals = sourceMesh.normals;
+            targetMesh.tangents = sourceMesh.tangents;
+            targetMesh.triangles = sourceMesh.triangles;
+            targetMesh.uv = sourceMesh.uv;
+            targetMesh.colors = sourceMesh.colors;
+            targetMesh.subMeshCount = sourceMesh.subMeshCount;
+            targetMesh.bindposes = sourceMesh.bindposes;
+            targetMesh.boneWeights = sourceMesh.boneWeights;
+
+            for (int i = 0; i < targetMesh.subMeshCount; ++i) {
+                targetMesh.SetSubMesh(i, sourceMesh.GetSubMesh(i));
+            }
+
+            return targetMesh;
         }
 
         private static void SendNewCurvedStickValues() {
@@ -507,8 +706,13 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
-            Player player = (Player)message["player"];
-            SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
+            try {
+                Player player = (Player)message["player"];
+                SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(Event_OnPlayerHandednessChanged)}.\n{ex}");
+            }
         }
 
         /// <summary>
@@ -614,6 +818,14 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.LogError($"Failed to disable.\n{ex}");
                 return false;
             }
+        }
+
+        private class BoneInfo {
+            public string name;
+            public int parentIndex;
+            public Vector3 localPosition;
+            public Quaternion localRotation;
+            public Vector3 localScale;
         }
     }
 }
