@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV10";
+        private const string MOD_VERSION = "0.2.0DEV12";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -704,6 +704,7 @@ namespace oomtm450PuckMod_CurvedStick {
             // Set stick mesh values.
             SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
 
+            UnityEngine.GameObject.Destroy(meshCollider.sharedMesh);
             Mesh colliderMesh = new Mesh();
             skinnedMeshRenderer.BakeMesh(colliderMesh);
             meshCollider.sharedMesh = colliderMesh;
