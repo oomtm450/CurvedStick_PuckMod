@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV9";
+        private const string MOD_VERSION = "0.2.0DEV10";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -472,6 +472,8 @@ namespace oomtm450PuckMod_CurvedStick {
                         curveNewCurveStickValues.MiddleCurve = int.Parse(splittedDataStrNewCurveStickValues[1]);
                         curveNewCurveStickValues.ToeCurve = int.Parse(splittedDataStrNewCurveStickValues[2]);
                         curveNewCurveStickValues.TipCurve = int.Parse(splittedDataStrNewCurveStickValues[3]);
+
+                        curveNewCurveStickValues.CheckCurveValues();
 
                         _sticksToUpdate.Add(clientId);
                         break;

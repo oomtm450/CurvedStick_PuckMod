@@ -12,6 +12,11 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         /// Const string, name used when sending the config data to the client.
         /// </summary>
         public const string CONFIG_DATA_NAME = Constants.MOD_NAME + "_clientconfig.json";
+
+        public const int HEEL_MAX = 100;
+        public const int MIDDLE_MAX = 100;
+        public const int TOE_MAX = 100;
+        public const int TIP_MAX = 500;
         #endregion
 
         #region Properties
@@ -97,6 +102,8 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
                 config = SetConfig(configFileContent);
             }
 
+            config.CheckCurveValues();
+
             File.WriteAllText(configPath, config.ToString());
 
             Logging.Log($"Writing client config : {config}", config);
@@ -108,6 +115,28 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
             string rootPath = Path.GetFullPath(".");
             string configPath = Path.Combine(rootPath, CONFIG_DATA_NAME);
             File.WriteAllText(configPath, this.ToString());
+        }
+
+        internal void CheckCurveValues() {
+            if (HeelCurve > HEEL_MAX)
+                HeelCurve = HEEL_MAX;
+            else if (HeelCurve < 0)
+                HeelCurve = 0;
+
+            if (MiddleCurve > MIDDLE_MAX)
+                MiddleCurve = MIDDLE_MAX;
+            else if (MiddleCurve < 0)
+                MiddleCurve = 0;
+
+            if (ToeCurve > TOE_MAX)
+                ToeCurve = TOE_MAX;
+            else if (ToeCurve < 0)
+                ToeCurve = 0;
+
+            if (TipCurve > TIP_MAX)
+                TipCurve = TIP_MAX;
+            else if (TipCurve < 0)
+                TipCurve = 0;
         }
     }
 }
