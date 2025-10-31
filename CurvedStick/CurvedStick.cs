@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV8";
+        private const string MOD_VERSION = "0.2.0DEV9";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -83,7 +83,9 @@ namespace oomtm450PuckMod_CurvedStick {
                         NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                     }
                     else {
-                        foreach (ulong clientId in _sticksToUpdate) {
+                        List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
+                        _sticksToUpdate.Clear();
+                        foreach (ulong clientId in sticksToUpdate) {
                             Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
                             if (player == null || !player)
                                 continue;
@@ -92,8 +94,6 @@ namespace oomtm450PuckMod_CurvedStick {
                             NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{FormatCurveStickForCommunication(_playersCurve[clientId])}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         }
                     }
-
-                    _sticksToUpdate.Clear();
                 }
                 catch (Exception ex) {
                     Logging.LogError($"Error in {nameof(ServerManager_Update_Patch)} Prefix().\n{ex}");
