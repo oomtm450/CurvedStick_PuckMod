@@ -447,9 +447,9 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (dataStr != "1")
                             break;
 
-                        Logging.Log($"Kicking client {clientId}.", ServerConfig);
+                        /*Logging.Log($"Kicking client {clientId}.", ServerConfig);
                         NetworkManager.Singleton.DisconnectClient(clientId,
-                            $"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
+                            $"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");*/
                         break;
 
                     case ASK_SERVER_FOR_DATA: // SERVER-SIDE : Send the necessary data to client.
