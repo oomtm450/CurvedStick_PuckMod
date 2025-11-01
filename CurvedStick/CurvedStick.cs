@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV12";
+        private const string MOD_VERSION = "0.2.0DEV13";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -77,10 +77,10 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (_updateAllSticksForReplay) {
                         _updateAllSticksForReplay = false;
 
-                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
+                        /*foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) // TODO
                             SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
 
-                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);*/
                     }
                     else {
                         List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
@@ -343,6 +343,7 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!ServerFunc.IsDedicatedServer() || (GamePhase)message["newGamePhase"] != GamePhase.Replay)
                 return;
 
+            _ = Resources.UnloadUnusedAssets();
             new Timer(UpdateAllSticksForReplayTimerCallback, null, 500, Timeout.Infinite);
         }
 
@@ -385,6 +386,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 //_sentOutOfDateMessage.Remove(clientId);
                 _playersCurve.Remove(clientId);
+                _sticksToUpdate.Remove(clientId);
             }
             catch (Exception ex) {
                 Logging.LogError($"Error in {nameof(Event_OnClientDisconnected)}.\n{ex}");
@@ -575,6 +577,8 @@ namespace oomtm450PuckMod_CurvedStick {
                 UnityEngine.Object.DestroyImmediate(stickGameObject.GetComponent<MeshFilter>());
 
                 skinnedMeshRenderer = stickGameObject.AddComponent<SkinnedMeshRenderer>();
+                if (skinnedMeshRenderer.sharedMesh != null)
+                    UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
                 skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
 
                 // --- 1. Get the bone mapping ---
@@ -618,8 +622,15 @@ namespace oomtm450PuckMod_CurvedStick {
                     newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
                 }
 
+                boneMap.Clear();
+                boneInfo.Clear();
+
                 skinnedMeshRenderer.bones = newBones;
                 skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
+                if (skinnedMeshRenderer.sharedMaterials != null) {
+                    foreach (Material material in skinnedMeshRenderer.sharedMaterials)
+                        UnityEngine.GameObject.Destroy(material);
+                }
                 skinnedMeshRenderer.sharedMaterials = originalMeshRendererSharedMaterials;
 
                 skinnedMeshRenderer.rootBone.SetParent(stickGameObject.transform, false);
@@ -629,7 +640,10 @@ namespace oomtm450PuckMod_CurvedStick {
             SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
 
             // TODO : Set blade tape mesh.
-            stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>().sharedMesh = null;
+            MeshFilter tapeMeshFilter = stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>();
+            if (tapeMeshFilter.sharedMesh != null)
+                UnityEngine.GameObject.Destroy(tapeMeshFilter.sharedMesh);
+            tapeMeshFilter.sharedMesh = null;
             // TODO : Set tape mesh values.
         }
 
@@ -652,6 +666,8 @@ namespace oomtm450PuckMod_CurvedStick {
                 meshCollider.convex = true;
 
                 skinnedMeshRenderer = gameObject.AddComponent<SkinnedMeshRenderer>();
+                if (skinnedMeshRenderer.sharedMesh != null)
+                    UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
                 skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
 
                 // --- 1. Get the bone mapping ---
@@ -704,7 +720,8 @@ namespace oomtm450PuckMod_CurvedStick {
             // Set stick mesh values.
             SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
 
-            UnityEngine.GameObject.Destroy(meshCollider.sharedMesh);
+            if (meshCollider.sharedMesh != null)
+                UnityEngine.GameObject.Destroy(meshCollider.sharedMesh);
             Mesh colliderMesh = new Mesh();
             skinnedMeshRenderer.BakeMesh(colliderMesh);
             meshCollider.sharedMesh = colliderMesh;
@@ -878,6 +895,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
                 _playersCurve.Clear();
+                _curvedStickAsset?.DestroyGameObjects();
 
                 Logging.Log($"Disabling...", ServerConfig, true);
 
