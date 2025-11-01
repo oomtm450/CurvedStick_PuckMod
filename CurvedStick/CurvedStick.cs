@@ -17,11 +17,13 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV13";
+        private const string MOD_VERSION = "0.2.0DEV19";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
         private const string HELP_MESSAGE = "Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100 0-100 0-100 0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n";
+
+        private const ulong REPLAY_PLAYER_OFFSET = 1337UL;
         #endregion
 
         #region Fields/Properties
@@ -77,10 +79,10 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (_updateAllSticksForReplay) {
                         _updateAllSticksForReplay = false;
 
-                        /*foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) // TODO
-                            SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
+                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
+                            SetCurvedStick(player, _playersCurve[player.OwnerClientId - REPLAY_PLAYER_OFFSET]);
 
-                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);*/
+                        NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                     }
                     else {
                         List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
@@ -441,8 +443,12 @@ namespace oomtm450PuckMod_CurvedStick {
                         if (dataStr != "1")
                             return;
 
-                        foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value))
-                            SetCurvedStick(_player, _playersCurve[_player.OwnerClientId]);
+                        foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
+                            if (PlayerManager.Instance.GetPlayerByClientId(_player.OwnerClientId - REPLAY_PLAYER_OFFSET).IsLocalPlayer)
+                                SetCurvedStick(_player, ClientConfig);
+                            else
+                                SetCurvedStick(_player, _playersCurve[_player.OwnerClientId - REPLAY_PLAYER_OFFSET]);
+                        }
                         break;
 
                     case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
@@ -797,7 +803,13 @@ namespace oomtm450PuckMod_CurvedStick {
         private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
             try {
                 Player player = (Player)message["player"];
-                SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
+                if (player.OwnerClientId > REPLAY_PLAYER_OFFSET)
+                    return;
+
+                if (player.IsLocalPlayer)
+                    SetCurvedStick(player, ClientConfig);
+                else
+                    SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
             }
             catch (Exception ex) {
                 Logging.LogError($"Error in {nameof(Event_OnPlayerHandednessChanged)}.\n{ex}");
