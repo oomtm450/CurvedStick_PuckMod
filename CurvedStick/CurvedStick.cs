@@ -465,7 +465,7 @@ namespace oomtm450PuckMod_CurvedStick {
                             break;
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
-                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve)
+                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve) // TODO : Optimize by sending one communication.
                             NetworkCommunication.SendData(nameof(SetCurvedStick), $"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}", clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
 
