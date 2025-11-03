@@ -72,10 +72,10 @@ namespace oomtm450PuckMod_CurvedStick {
         public static class ServerManager_Update_Patch {
             [HarmonyPrefix]
             public static bool Prefix() {
-                try {
-                    if (!ServerFunc.IsDedicatedServer())
-                        return true;
+                if (!ServerFunc.IsDedicatedServer())
+                    return true;
 
+                try {
                     if (_updateAllSticksForReplay) {
                         _updateAllSticksForReplay = false;
 
@@ -132,10 +132,10 @@ namespace oomtm450PuckMod_CurvedStick {
         public static class Player_Server_SpawnStick_Patch {
             [HarmonyPostfix]
             public static void Postfix(Player __instance, Vector3 position, Quaternion rotation, PlayerRole role) {
-                try {
-                    if (!ServerFunc.IsDedicatedServer())
-                        return;
+                if (!ServerFunc.IsDedicatedServer())
+                    return;
 
+                try {
                     new Timer(UpdateStickTimerCallback, __instance.OwnerClientId, 150, Timeout.Infinite);
                 }
                 catch (Exception ex) {
@@ -151,11 +151,11 @@ namespace oomtm450PuckMod_CurvedStick {
         public class UIScoreboard_UpdatePlayer_Patch {
             [HarmonyPostfix]
             public static void Postfix(Player player) {
-                try {
-                    // If this is the server, do not use the patch.
-                    if (ServerFunc.IsDedicatedServer())
-                        return;
+                // If this is the server, do not use the patch.
+                if (ServerFunc.IsDedicatedServer())
+                    return;
 
+                try {
                     if (!_hasRegisteredWithNamedMessageHandler || !_serverHasResponded) {
                         //Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_SERVER}.", ClientConfig);
                         NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_SERVER_TO_CLIENT, ReceiveData);
@@ -345,8 +345,13 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!ServerFunc.IsDedicatedServer() || (GamePhase)message["newGamePhase"] != GamePhase.Replay)
                 return;
 
-            _ = Resources.UnloadUnusedAssets();
-            new Timer(UpdateAllSticksForReplayTimerCallback, null, 500, Timeout.Infinite);
+            try {
+                _ = Resources.UnloadUnusedAssets();
+                new Timer(UpdateAllSticksForReplayTimerCallback, null, 500, Timeout.Infinite);
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(Event_OnGamePhaseChanged)}.\n{ex}");
+            }
         }
 
         /// <summary>
@@ -357,8 +362,6 @@ namespace oomtm450PuckMod_CurvedStick {
         public static void Event_OnClientConnected(Dictionary<string, object> message) {
             if (!ServerFunc.IsDedicatedServer())
                 return;
-
-            Logging.Log("Event_OnClientConnected", ServerConfig);
 
             try {
                 if (NetworkManager.Singleton != null && !_hasRegisteredWithNamedMessageHandler) {
@@ -380,8 +383,6 @@ namespace oomtm450PuckMod_CurvedStick {
         public static void Event_OnClientDisconnected(Dictionary<string, object> message) {
             if (!ServerFunc.IsDedicatedServer())
                 return;
-
-            Logging.Log("Event_OnClientDisconnected", ServerConfig);
 
             try {
                 ulong clientId = (ulong)message["clientId"];
