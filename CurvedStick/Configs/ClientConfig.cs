@@ -14,9 +14,16 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         public const string CONFIG_DATA_NAME = Constants.MOD_NAME + "_clientconfig.json";
 
         public const int HEEL_MAX = 100;
+        public const int HEEL_MIN = HEEL_MAX * -1;
+
         public const int MIDDLE_MAX = 100;
+        public const int MIDDLE_MIN = MIDDLE_MAX * -1;
+
         public const int TOE_MAX = 100;
-        public const int TIP_MAX = 500;
+        public const int TOE_MIN = TOE_MAX * -1;
+
+        public const int TIP_MAX = 400;
+        public const int TIP_MIN = TIP_MAX * -1;
         #endregion
 
         #region Properties
@@ -68,6 +75,12 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         /// </summary>
         [JsonIgnore]
         public float TipCurveF => ((float)TipCurve) / 1000f;
+
+        /// <summary>
+        /// Bool, true if the stick has no curve.
+        /// </summary>
+        [JsonIgnore]
+        public bool NoCurve => HeelCurve == 0 && MiddleCurve == 0 && ToeCurve == 0 && TipCurve == 0;
         #endregion
 
         /// <summary>
@@ -120,23 +133,23 @@ namespace oomtm450PuckMod_CurvedStick.Configs {
         internal void CheckCurveValues() {
             if (HeelCurve > HEEL_MAX)
                 HeelCurve = HEEL_MAX;
-            else if (HeelCurve < 0)
-                HeelCurve = 0;
+            else if (HeelCurve < HEEL_MIN)
+                HeelCurve = HEEL_MIN;
 
             if (MiddleCurve > MIDDLE_MAX)
                 MiddleCurve = MIDDLE_MAX;
-            else if (MiddleCurve < 0)
-                MiddleCurve = 0;
+            else if (MiddleCurve < MIDDLE_MIN)
+                MiddleCurve = MIDDLE_MIN;
 
             if (ToeCurve > TOE_MAX)
                 ToeCurve = TOE_MAX;
-            else if (ToeCurve < 0)
-                ToeCurve = 0;
+            else if (ToeCurve < TOE_MIN)
+                ToeCurve = TOE_MIN;
 
             if (TipCurve > TIP_MAX)
                 TipCurve = TIP_MAX;
-            else if (TipCurve < 0)
-                TipCurve = 0;
+            else if (TipCurve < TIP_MIN)
+                TipCurve = TIP_MIN;
         }
     }
 }

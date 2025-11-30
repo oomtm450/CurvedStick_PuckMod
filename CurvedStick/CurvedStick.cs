@@ -17,11 +17,11 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV19";
+        private const string MOD_VERSION = "0.2.0DEV21";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
-        private const string HELP_MESSAGE = "Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel,middle,toe,tip (0-100 0-100 0-100 0-500)\n* <b>/heelcurve</b> - Adjust the curve on the heel (0-100)\n* <b>/middlecurve</b> - Adjust the curve on the middle (0-100)\n* <b>/toecurve</b> - Adjust the curve on the toe (0-100)\n* <b>/tipcurve</b> - Adjust the curve on the tip (0-500)\n";
+        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({ClientConfig.HEEL_MIN}-{ClientConfig.HEEL_MAX} {ClientConfig.MIDDLE_MIN}-{ClientConfig.MIDDLE_MAX} {ClientConfig.TOE_MIN}-{ClientConfig.TOE_MAX} {ClientConfig.TIP_MIN}-{ClientConfig.TIP_MAX})\n* <b>/heelcurve</b> - Adjust the curve on the heel ({ClientConfig.HEEL_MIN}-{ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({ClientConfig.MIDDLE_MIN}-{ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({ClientConfig.TOE_MIN}-{ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({ClientConfig.TIP_MIN}-{ClientConfig.TIP_MAX})\n";
 
         private const ulong REPLAY_PLAYER_OFFSET = 1337UL;
         #endregion
@@ -57,6 +57,8 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Int, number of time client asked the server for startup data.
         /// </summary>
         private static int _askServerForStartupDataCount = 0;
+
+        private static Mesh _originalTapeMesh = null;
         #endregion
 
         #region Server-Side
@@ -200,33 +202,40 @@ namespace oomtm450PuckMod_CurvedStick {
                                 string[] splittedMessageCurve = message.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
                                     if (int.TryParse(splittedMessageCurve[i], out int curveValue)) {
-                                        if (i == 3) {
-                                            if (curveValue > 500) // 0.5
-                                                curveValue = 500;
-                                            else if (curveValue < 0)
-                                                curveValue = 0;
-                                        }
-                                        else {
-                                            if (curveValue > 100) // 0.1
-                                                curveValue = 100;
-                                            else if (curveValue < 0)
-                                                curveValue = 0;
-                                        }
-
                                         switch (i) {
                                             case 0:
+                                                if (curveValue > ClientConfig.HEEL_MAX)
+                                                    curveValue = ClientConfig.HEEL_MAX;
+                                                else if (curveValue < ClientConfig.HEEL_MIN)
+                                                    curveValue = ClientConfig.HEEL_MIN;
+
                                                 ClientConfig.HeelCurve = curveValue;
                                                 break;
 
                                             case 1:
+                                                if (curveValue > ClientConfig.MIDDLE_MAX)
+                                                    curveValue = ClientConfig.MIDDLE_MAX;
+                                                else if (curveValue < ClientConfig.MIDDLE_MIN)
+                                                    curveValue = ClientConfig.MIDDLE_MIN;
+
                                                 ClientConfig.MiddleCurve = curveValue;
                                                 break;
 
                                             case 2:
+                                                if (curveValue > ClientConfig.TOE_MAX)
+                                                    curveValue = ClientConfig.TOE_MAX;
+                                                else if (curveValue < ClientConfig.TOE_MIN)
+                                                    curveValue = ClientConfig.TOE_MIN;
+
                                                 ClientConfig.ToeCurve = curveValue;
                                                 break;
 
                                             case 3:
+                                                if (curveValue > ClientConfig.TIP_MAX)
+                                                    curveValue = ClientConfig.TIP_MAX;
+                                                else if (curveValue < ClientConfig.TIP_MIN)
+                                                    curveValue = ClientConfig.TIP_MIN;
+
                                                 ClientConfig.TipCurve = curveValue;
                                                 break;
                                         }
@@ -243,10 +252,10 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
                             else {
                                 if (int.TryParse(message, out int heelCurveValue)) {
-                                    if (heelCurveValue > 100) // 0.1
-                                        heelCurveValue = 100;
-                                    else if (heelCurveValue < 0)
-                                        heelCurveValue = 0;
+                                    if (heelCurveValue > ClientConfig.HEEL_MAX)
+                                        heelCurveValue = ClientConfig.HEEL_MAX;
+                                    else if (heelCurveValue < ClientConfig.HEEL_MIN)
+                                        heelCurveValue = ClientConfig.HEEL_MIN;
 
                                     ClientConfig.HeelCurve = heelCurveValue;
                                     changeCurve = true;
@@ -260,10 +269,10 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
                             else {
                                 if (int.TryParse(message, out int middleCurveValue)) {
-                                    if (middleCurveValue > 100) // 0.1
-                                        middleCurveValue = 100;
-                                    else if (middleCurveValue < 0)
-                                        middleCurveValue = 0;
+                                    if (middleCurveValue > ClientConfig.MIDDLE_MAX)
+                                        middleCurveValue = ClientConfig.MIDDLE_MAX;
+                                    else if (middleCurveValue < ClientConfig.MIDDLE_MIN)
+                                        middleCurveValue = ClientConfig.MIDDLE_MIN;
 
                                     ClientConfig.MiddleCurve = middleCurveValue;
                                     changeCurve = true;
@@ -277,10 +286,10 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
                             else {
                                 if (int.TryParse(message, out int toeCurveValue)) {
-                                    if (toeCurveValue > 100) // 0.1
-                                        toeCurveValue = 100;
-                                    else if (toeCurveValue < 0)
-                                        toeCurveValue = 0;
+                                    if (toeCurveValue > ClientConfig.TOE_MAX)
+                                        toeCurveValue = ClientConfig.TOE_MAX;
+                                    else if (toeCurveValue < ClientConfig.TOE_MIN)
+                                        toeCurveValue = ClientConfig.TOE_MIN;
 
                                     ClientConfig.ToeCurve = toeCurveValue;
                                     changeCurve = true;
@@ -294,10 +303,10 @@ namespace oomtm450PuckMod_CurvedStick {
                                 UIChat.Instance.AddChatMessage($"The tip curve is {ClientConfig.TipCurve}");
                             else {
                                 if (int.TryParse(message, out int tipCurveValue)) {
-                                    if (tipCurveValue > 500) // 0.5
-                                        tipCurveValue = 500;
-                                    else if (tipCurveValue < 0)
-                                        tipCurveValue = 0;
+                                    if (tipCurveValue > ClientConfig.TIP_MAX)
+                                        tipCurveValue = ClientConfig.TIP_MAX;
+                                    else if (tipCurveValue < ClientConfig.TIP_MIN)
+                                        tipCurveValue = ClientConfig.TIP_MIN;
 
                                     ClientConfig.TipCurve = tipCurveValue;
                                     changeCurve = true;
@@ -648,9 +657,14 @@ namespace oomtm450PuckMod_CurvedStick {
 
             // TODO : Set blade tape mesh.
             MeshFilter tapeMeshFilter = stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>();
-            if (tapeMeshFilter.sharedMesh != null)
+            if (_originalTapeMesh == null)
+                _originalTapeMesh = tapeMeshFilter.sharedMesh;
+            if (tapeMeshFilter.sharedMesh != null && tapeMeshFilter.sharedMesh != _originalTapeMesh)
                 UnityEngine.GameObject.Destroy(tapeMeshFilter.sharedMesh);
-            tapeMeshFilter.sharedMesh = null;
+            if (curve.NoCurve) // TODO : Remove temp code to add a real tape.
+                tapeMeshFilter.sharedMesh = _originalTapeMesh;
+            else
+                tapeMeshFilter.sharedMesh = null;
             // TODO : Set tape mesh values.
         }
 
@@ -676,6 +690,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 if (skinnedMeshRenderer.sharedMesh != null)
                     UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
                 skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
+                skinnedMeshRenderer.updateWhenOffscreen = true;
 
                 // --- 1. Get the bone mapping ---
                 // Create a dictionary of the target skeleton's bones for efficient lookup
@@ -690,7 +705,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         localScale = t.localScale,
                     };
                 }
-                
+
                 // Create the new bones array for the SkinnedMeshRenderer
                 Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
                 for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
@@ -768,17 +783,18 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static Mesh DuplicateMesh(Mesh sourceMesh) {
-            Mesh targetMesh = new Mesh();
-            targetMesh.name = sourceMesh.name + "_" + new System.Random().Next(1000000);
-            targetMesh.vertices = sourceMesh.vertices;
-            targetMesh.normals = sourceMesh.normals;
-            targetMesh.tangents = sourceMesh.tangents;
-            targetMesh.triangles = sourceMesh.triangles;
-            targetMesh.uv = sourceMesh.uv;
-            targetMesh.colors = sourceMesh.colors;
-            targetMesh.subMeshCount = sourceMesh.subMeshCount;
-            targetMesh.bindposes = sourceMesh.bindposes;
-            targetMesh.boneWeights = sourceMesh.boneWeights;
+            Mesh targetMesh = new Mesh {
+                name = sourceMesh.name + "_" + new System.Random().Next(1000000),
+                vertices = sourceMesh.vertices,
+                normals = sourceMesh.normals,
+                tangents = sourceMesh.tangents,
+                triangles = sourceMesh.triangles,
+                uv = sourceMesh.uv,
+                colors = sourceMesh.colors,
+                subMeshCount = sourceMesh.subMeshCount,
+                bindposes = sourceMesh.bindposes,
+                boneWeights = sourceMesh.boneWeights,
+            };
 
             for (int i = 0; i < targetMesh.subMeshCount; ++i) {
                 targetMesh.SetSubMesh(i, sourceMesh.GetSubMesh(i));
@@ -812,6 +828,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 else
                     SetCurvedStick(player, _playersCurve[player.OwnerClientId]);
             }
+            catch (KeyNotFoundException) { }
             catch (Exception ex) {
                 Logging.LogError($"Error in {nameof(Event_OnPlayerHandednessChanged)}.\n{ex}");
             }

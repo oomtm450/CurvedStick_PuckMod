@@ -88,7 +88,7 @@ namespace oomtm450PuckMod_CurvedStick.SystemFunc {
 
                 return (dataName.Trim(), dataStr);
             }
-            catch (Exception ex)  {
+            catch (Exception ex) {
                 Logging.LogError($"Error when reading streamed data: {ex}");
             }
 
