@@ -17,7 +17,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV21";
+        private const string MOD_VERSION = "0.2.0DEV22";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -94,8 +94,16 @@ namespace oomtm450PuckMod_CurvedStick {
                             if (player == null || !player)
                                 continue;
 
-                            SetCurvedStick(player, _playersCurve[clientId]);
-                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{FormatCurveStickForCommunication(_playersCurve[clientId])}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                            ClientConfig playerCurve;
+                            try {
+                                playerCurve = _playersCurve[clientId];
+                            }
+                            catch (KeyNotFoundException) {
+                                continue;
+                            }
+
+                            SetCurvedStick(player, playerCurve);
+                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{FormatCurveStickForCommunication(playerCurve)}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         }
                     }
                 }
