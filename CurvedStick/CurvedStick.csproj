@@ -3,7 +3,7 @@
   <PropertyGroup>
     <AssemblyName>oomtm450PuckMod_CurvedStick</AssemblyName>
     <TargetFramework>net4.8</TargetFramework>
-    <Version>0.1.0</Version>
+    <Version>0.2.1</Version>
     <RootNamespace>oomtm450PuckMod_CurvedStick</RootNamespace>
   </PropertyGroup>
 

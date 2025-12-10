@@ -4,6 +4,7 @@ using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using Unity.Netcode;
 using UnityEngine;
@@ -17,7 +18,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.0DEV23";
+        private const string MOD_VERSION = "0.2.1DEV1";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -64,6 +65,8 @@ namespace oomtm450PuckMod_CurvedStick {
         #region Server-Side
         private static bool _updateAllSticksForReplay = false;
         private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
+
+        private static int _frameCounter = 0;
         #endregion
         #endregion
 
@@ -96,23 +99,31 @@ namespace oomtm450PuckMod_CurvedStick {
                         NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                     }
                     else {
-                        List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
-                        _sticksToUpdate.Clear();
-                        foreach (ulong clientId in sticksToUpdate) {
-                            Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
-                            if (player == null || !player)
-                                continue;
+                        if (++_frameCounter % 20 == 0) { // Check and send sticks update every x frames.
+                            _frameCounter = 0;
+                            List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
+                            _sticksToUpdate.Clear();
 
-                            ClientConfig playerCurve;
-                            try {
-                                playerCurve = _playersCurve[clientId];
-                            }
-                            catch (KeyNotFoundException) {
-                                continue;
+                            StringBuilder dataToSend = new StringBuilder();
+                            foreach (ulong clientId in sticksToUpdate) {
+                                Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
+                                if (player == null || !player)
+                                    continue;
+
+                                ClientConfig playerCurve;
+                                try {
+                                    playerCurve = _playersCurve[clientId];
+                                }
+                                catch (KeyNotFoundException) {
+                                    continue;
+                                }
+
+                                SetCurvedStick(player, playerCurve);
+                                dataToSend.Append($"{clientId};{FormatCurveStickForCommunication(playerCurve)}!");
                             }
 
-                            SetCurvedStick(player, playerCurve);
-                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick), $"{clientId};{FormatCurveStickForCommunication(playerCurve)}", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                            string dataToSendStr = dataToSend.ToString();
+                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         }
                     }
                 }
@@ -448,22 +459,12 @@ namespace oomtm450PuckMod_CurvedStick {
                         break;
 
                     case nameof(SetCurvedStick):
-                        string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
-                        if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
-                            curveSetCurvedStick = new ClientConfig();
-                            _playersCurve.Add(clientId, curveSetCurvedStick);
-                        }
+                        SetCurvedStickClientReceiveData(dataStr, clientId);
+                        break;
 
-                        curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
-                        curveSetCurvedStick.MiddleCurve = int.Parse(splittedDataStrSetCurvedStick[2]);
-                        curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
-                        curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
-
-                        Player player = PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(splittedDataStrSetCurvedStick[0]));
-                        if (player == null || !player)
-                            return;
-
-                        SetCurvedStick(player, curveSetCurvedStick);
+                    case nameof(SetCurvedStick) + "ALL":
+                        foreach (string playerCurvedStickDataStr in dataStr.Split('!'))
+                            SetCurvedStickClientReceiveData(playerCurvedStickDataStr, clientId);
                         break;
 
                     case nameof(SetCurvedStick) + "ALLREPLAY":
@@ -492,8 +493,12 @@ namespace oomtm450PuckMod_CurvedStick {
                             break;
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
-                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve) // TODO : Optimize by sending one communication.
-                            NetworkCommunication.SendData(nameof(SetCurvedStick), $"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}", clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                        StringBuilder dataToSend = new StringBuilder();
+                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve)
+                            dataToSend.Append($"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}!");
+
+                        string dataToSendStr = dataToSend.ToString();
+                        NetworkCommunication.SendData(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
 
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
@@ -517,6 +522,25 @@ namespace oomtm450PuckMod_CurvedStick {
             catch (Exception ex) {
                 Logging.LogError($"Error in ReceiveData.\n{ex}");
             }
+        }
+
+        private static void SetCurvedStickClientReceiveData(string dataStr, ulong clientId) {
+            string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
+            if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
+                curveSetCurvedStick = new ClientConfig();
+                _playersCurve.Add(clientId, curveSetCurvedStick);
+            }
+
+            curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
+            curveSetCurvedStick.MiddleCurve = int.Parse(splittedDataStrSetCurvedStick[2]);
+            curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
+            curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
+
+            Player player = PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(splittedDataStrSetCurvedStick[0]));
+            if (player == null || !player)
+                return;
+
+            SetCurvedStick(player, curveSetCurvedStick);
         }
 
         private static void UpdateStickTimerCallback(object stateInfo) {
