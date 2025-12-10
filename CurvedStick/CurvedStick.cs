@@ -123,7 +123,8 @@ namespace oomtm450PuckMod_CurvedStick {
                             }
 
                             string dataToSendStr = dataToSend.ToString();
-                            NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                            if (!string.IsNullOrEmpty(dataToSendStr))
+                                NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         }
                     }
                 }
@@ -498,7 +499,8 @@ namespace oomtm450PuckMod_CurvedStick {
                             dataToSend.Append($"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}!");
 
                         string dataToSendStr = dataToSend.ToString();
-                        NetworkCommunication.SendData(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
+                        if (!string.IsNullOrEmpty(dataToSendStr))
+                            NetworkCommunication.SendData(nameof(SetCurvedStick) + "ALL", dataToSendStr.Substring(0, dataToSendStr.Length - 1), clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         break;
 
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
