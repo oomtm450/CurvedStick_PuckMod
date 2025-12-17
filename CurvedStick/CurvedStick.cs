@@ -460,12 +460,12 @@ namespace oomtm450PuckMod_CurvedStick {
                         break;
 
                     case nameof(SetCurvedStick):
-                        SetCurvedStickClientReceiveData(dataStr, clientId);
+                        SetCurvedStickClientReceiveData(dataStr);
                         break;
 
                     case nameof(SetCurvedStick) + "ALL":
                         foreach (string playerCurvedStickDataStr in dataStr.Split('!'))
-                            SetCurvedStickClientReceiveData(playerCurvedStickDataStr, clientId);
+                            SetCurvedStickClientReceiveData(playerCurvedStickDataStr);
                         break;
 
                     case nameof(SetCurvedStick) + "ALLREPLAY":
@@ -526,8 +526,9 @@ namespace oomtm450PuckMod_CurvedStick {
             }
         }
 
-        private static void SetCurvedStickClientReceiveData(string dataStr, ulong clientId) {
+        private static void SetCurvedStickClientReceiveData(string dataStr) {
             string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
+            ulong clientId = ulong.Parse(splittedDataStrSetCurvedStick[0]);
             if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
                 curveSetCurvedStick = new ClientConfig();
                 _playersCurve.Add(clientId, curveSetCurvedStick);
@@ -538,7 +539,7 @@ namespace oomtm450PuckMod_CurvedStick {
             curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
             curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
 
-            Player player = PlayerManager.Instance.GetPlayerByClientId(ulong.Parse(splittedDataStrSetCurvedStick[0]));
+            Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
             if (player == null || !player)
                 return;
 
