@@ -18,7 +18,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.1DEV1";
+        private const string MOD_VERSION = "0.2.1DEV6";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -135,26 +135,6 @@ namespace oomtm450PuckMod_CurvedStick {
                 return true;
             }
         }
-
-        /*/// <summary>
-        /// Class that patches the UpdateStick event from Stick.
-        /// </summary>
-        [HarmonyPatch(typeof(Stick), nameof(Stick.UpdateStick))]
-        public static class Stick_UpdateStick_Patch {
-            [HarmonyPostfix]
-            public static void Postfix(Stick __instance) {
-                try {
-                    if (!ServerFunc.IsDedicatedServer())
-                        return;
-
-                    Logging.Log("Stick_UpdateStick_Patch", ServerConfig);
-                    SetCurvedStick(__instance.Player);
-                }
-                catch (Exception ex) {
-                    Logging.LogError($"Error in Stick_UpdateStick_Patch Postfix().\n{ex}");
-                }
-            }
-        }*/
 
         /// <summary>
         /// Class that patches the Server_SpawnStick event from Player.
@@ -593,11 +573,10 @@ namespace oomtm450PuckMod_CurvedStick {
             else
                 handedness = CurvedStickAsset.LEFT;
 
-            if (!ServerFunc.IsDedicatedServer()) {
-                SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].GetComponentInChildren<SkinnedMeshRenderer>();
+            SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].GetComponentInChildren<SkinnedMeshRenderer>();
 
+            if (!ServerFunc.IsDedicatedServer())
                 SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handedness);
-            }
             else {
                 SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].GetComponentInChildren<SkinnedMeshRenderer>();
 
@@ -605,9 +584,16 @@ namespace oomtm450PuckMod_CurvedStick {
                 GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
                 SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
 
+                // Set shaft collider for puck.
+                GameObject shaftPuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Shaft").gameObject;
+                SetCurvedStickMagicServer(shaftPuckGameObject, prefabSkinnedMeshRendererStick, curve, handedness);
+
                 // Set blade collider for stick.
                 GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
                 SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
+
+                GameObject shaftStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Shaft").gameObject;
+                SetCurvedStickMagicServer(shaftStickGameObject, prefabSkinnedMeshRendererStick, curve, handedness);
             }
         }
 
@@ -736,7 +722,6 @@ namespace oomtm450PuckMod_CurvedStick {
                 skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
                 skinnedMeshRenderer.updateWhenOffscreen = true;
 
-                // --- 1. Get the bone mapping ---
                 // Create a dictionary of the target skeleton's bones for efficient lookup
                 var boneMap = new Dictionary<string, Transform>();
                 var boneInfo = new Dictionary<string, BoneInfo>();
