@@ -18,7 +18,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.2.1DEV6";
+        private const string MOD_VERSION = "0.3.0DEV1";
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -573,12 +573,12 @@ namespace oomtm450PuckMod_CurvedStick {
             else
                 handedness = CurvedStickAsset.LEFT;
 
-            SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].GetComponentInChildren<SkinnedMeshRenderer>();
+            SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
 
             if (!ServerFunc.IsDedicatedServer())
                 SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handedness);
             else {
-                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].GetComponentInChildren<SkinnedMeshRenderer>();
+                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform.GetChild(1).GetComponent<SkinnedMeshRenderer>();
 
                 // Set blade collider for puck.
                 GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
@@ -813,7 +813,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
         private static Mesh DuplicateMesh(Mesh sourceMesh) {
             Mesh targetMesh = new Mesh {
-                name = sourceMesh.name + "_" + new System.Random().Next(1000000),
+                name = "curvedStickMesh_" + new System.Random().Next(1000000),
                 vertices = sourceMesh.vertices,
                 normals = sourceMesh.normals,
                 tangents = sourceMesh.tangents,
@@ -825,9 +825,8 @@ namespace oomtm450PuckMod_CurvedStick {
                 boneWeights = sourceMesh.boneWeights,
             };
 
-            for (int i = 0; i < targetMesh.subMeshCount; ++i) {
+            for (int i = 0; i < targetMesh.subMeshCount; ++i)
                 targetMesh.SetSubMesh(i, sourceMesh.GetSubMesh(i));
-            }
 
             return targetMesh;
         }
