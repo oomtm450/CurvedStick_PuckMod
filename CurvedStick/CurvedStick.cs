@@ -3,6 +3,7 @@ using oomtm450PuckMod_CurvedStick.Configs;
 using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -18,7 +19,16 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.3.0DEV1";
+        private const string MOD_VERSION = "0.3.0";
+
+        /// <summary>
+        /// List of string, last released versions of the mod.
+        /// </summary>
+        private static readonly ReadOnlyCollection<string> OLD_MOD_VERSIONS = new ReadOnlyCollection<string>(new List<string> {
+            "0.1.0",
+            "0.2.0",
+            "0.2.1",
+        });
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
@@ -60,6 +70,16 @@ namespace oomtm450PuckMod_CurvedStick {
         private static int _askServerForStartupDataCount = 0;
 
         private static Mesh _originalTapeMesh = null;
+
+        /// <summary>
+        /// Bool, true if the client asked to be warned because of versionning problems.
+        /// </summary>
+        private static bool _askForModOutOfDateWarning = false;
+
+        /// <summary>
+        /// Bool, true if the client needs to notify the user that the server is running an out of date version of the mod.
+        /// </summary>
+        private static bool _addServerModVersionOutOfDateMessage = false;
         #endregion
 
         #region Server-Side
@@ -67,6 +87,11 @@ namespace oomtm450PuckMod_CurvedStick {
         private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
 
         private static int _frameCounter = 0;
+
+        /// <summary>
+        /// LockDictionary of ulong and DateTime, last time a mod out of date message was sent to a client (ulong clientId).
+        /// </summary>
+        private static readonly LockDictionary<ulong, DateTime> _sentOutOfDateMessage = new LockDictionary<ulong, DateTime>();
         #endregion
         #endregion
 
@@ -178,6 +203,14 @@ namespace oomtm450PuckMod_CurvedStick {
                             NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT_TO_SERVER, ClientConfig);
                             SendNewCurvedStickValues();
                         }
+                    }
+                    else if (_askForModOutOfDateWarning) {
+                        _askForModOutOfDateWarning = false;
+                        NetworkCommunication.SendData(Constants.MOD_NAME + "_modoutofdate", "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT_TO_SERVER, ClientConfig);
+                    }
+                    else if (_addServerModVersionOutOfDateMessage) {
+                        _addServerModVersionOutOfDateMessage = false;
+                        UIChat.Instance.AddChatMessage($"Server's {Constants.WORKSHOP_MOD_NAME} mod is out of date. Some functionalities might not work properly.");
                     }
                 }
                 catch (Exception ex) {
@@ -355,6 +388,26 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         /// <summary>
+        /// Class that patches the Server_ResetGameState event from GameManager.
+        /// </summary>
+        [HarmonyPatch(typeof(GameManager), nameof(GameManager.Server_ResetGameState))]
+        public class GameManager_Server_ResetGameState_Patch {
+            [HarmonyPostfix]
+            public static void Postfix(bool resetPhase) {
+                try {
+                    // If this is not the server, do not use the patch.
+                    if (!ServerFunc.IsDedicatedServer())
+                        return;
+                    
+                    _sentOutOfDateMessage.Clear();
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in {nameof(GameManager_Server_ResetGameState_Patch)} Postfix().\n{ex}");
+                }
+            }
+        }
+
+        /// <summary>
         /// Method called when a client has connected (joined a server) on the server-side.
         /// Used to set server-sided stuff after the game has loaded.
         /// </summary>
@@ -405,7 +458,7 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 ulong clientId = (ulong)message["clientId"];
 
-                //_sentOutOfDateMessage.Remove(clientId);
+                _sentOutOfDateMessage.Remove(clientId);
                 _playersCurve.Remove(clientId);
                 _sticksToUpdate.Remove(clientId);
             }
@@ -430,13 +483,16 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
 
                 switch (dataName) {
-                    case Constants.MOD_NAME + "_" + nameof(MOD_VERSION): // CLIENT-SIDE : Mod version check, kick if client and server versions are not the same.
+                    case Constants.MOD_NAME + "_" + nameof(MOD_VERSION): // CLIENT-SIDE : Mod version check, warn if client and server versions are not the same.
                         _serverHasResponded = true;
-
-                        if (MOD_VERSION == dataStr) // TODO : Move the kick later so that it doesn't break anything. Maybe even add a chat message and a 3-5 sec wait.
+                        if (MOD_VERSION == dataStr)
                             break;
+                        else if (OLD_MOD_VERSIONS.Contains(dataStr)) {
+                            _addServerModVersionOutOfDateMessage = true;
+                            break;
+                        }
 
-                        NetworkCommunication.SendData(Constants.MOD_NAME + "_" + "kick", "1", clientId, Constants.FROM_CLIENT_TO_SERVER, ServerConfig);
+                        _askForModOutOfDateWarning = true;
                         break;
 
                     case nameof(SetCurvedStick):
@@ -460,13 +516,27 @@ namespace oomtm450PuckMod_CurvedStick {
                         }
                         break;
 
-                    case Constants.MOD_NAME + "_" + "kick": // SERVER-SIDE : Kick the client that asked to be kicked.
+                    case Constants.MOD_NAME + "_modoutofdate": // SERVER-SIDE : Warn the client that the mod is out of date.
                         if (dataStr != "1")
                             break;
 
-                        /*Logging.Log($"Kicking client {clientId}.", ServerConfig);
-                        NetworkManager.Singleton.DisconnectClient(clientId,
-                            $"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");*/
+                        //NetworkManager.Singleton.DisconnectClient(clientId,
+                        //$"Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
+
+                        if (!_sentOutOfDateMessage.TryGetValue(clientId, out DateTime lastCheckTime)) {
+                            lastCheckTime = DateTime.MinValue;
+                            _sentOutOfDateMessage.Add(clientId, lastCheckTime);
+                        }
+
+                        DateTime utcNow = DateTime.UtcNow;
+                        if (lastCheckTime + TimeSpan.FromSeconds(900) < utcNow) {
+                            if (string.IsNullOrEmpty(PlayerManager.Instance.GetPlayerByClientId(clientId).Username.Value.ToString()))
+                                break;
+
+                            Logging.Log($"Warning client {clientId} mod out of date.", ServerConfig);
+                            UIChat.Instance.Server_SendSystemChatMessage($"{PlayerManager.Instance.GetPlayerByClientId(clientId).Username.Value} : {Constants.WORKSHOP_MOD_NAME} Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
+                            _sentOutOfDateMessage[clientId] = utcNow;
+                        }
                         break;
 
                     case ASK_SERVER_FOR_DATA: // SERVER-SIDE : Send the necessary data to client.
@@ -573,28 +643,31 @@ namespace oomtm450PuckMod_CurvedStick {
             else
                 handedness = CurvedStickAsset.LEFT;
 
-            SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
-
-            if (!ServerFunc.IsDedicatedServer())
+            if (!ServerFunc.IsDedicatedServer()) {
+                SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
                 SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handedness);
+            }
             else {
-                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform.GetChild(1).GetComponent<SkinnedMeshRenderer>();
+                Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
+                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = curvedBladeTransform.GetComponentInChildren<SkinnedMeshRenderer>();
 
                 // Set blade collider for puck.
                 GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
                 SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
-
-                // Set shaft collider for puck.
-                GameObject shaftPuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Shaft").gameObject;
-                SetCurvedStickMagicServer(shaftPuckGameObject, prefabSkinnedMeshRendererStick, curve, handedness);
+                ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
 
                 // Set blade collider for stick.
                 GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
                 SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
-
-                GameObject shaftStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Shaft").gameObject;
-                SetCurvedStickMagicServer(shaftStickGameObject, prefabSkinnedMeshRendererStick, curve, handedness);
+                ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
             }
+        }
+
+        private static void ChangeLayerOfAllChild(Transform transform, int layer) {
+            for (int i = 0; i < transform.childCount; i++)
+                ChangeLayerOfAllChild(transform.GetChild(i), layer);
+
+            transform.gameObject.layer = layer;
         }
 
         private static void SetCurvedStickMagicClient(GameObject stickMesh, SkinnedMeshRenderer prefabSkinnedMeshRenderer, ClientConfig curve,
@@ -723,8 +796,9 @@ namespace oomtm450PuckMod_CurvedStick {
                 skinnedMeshRenderer.updateWhenOffscreen = true;
 
                 // Create a dictionary of the target skeleton's bones for efficient lookup
-                var boneMap = new Dictionary<string, Transform>();
-                var boneInfo = new Dictionary<string, BoneInfo>();
+                Dictionary<string, Transform> boneMap = new Dictionary<string, Transform>();
+                Dictionary<string, BoneInfo> boneInfo = new Dictionary<string, BoneInfo>();
+
                 foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
                     boneMap[t.name] = t;
                     boneInfo[t.name] = new BoneInfo {
@@ -740,9 +814,8 @@ namespace oomtm450PuckMod_CurvedStick {
                 for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
                     string boneName = prefabSkinnedMeshRenderer.bones[i].name;
                     boneInfo[boneName].parentIndex = i;
-                    if (boneMap.TryGetValue(boneName, out Transform mappedBone)) {
+                    if (boneMap.TryGetValue(boneName, out Transform mappedBone))
                         newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
-                    }
                     else {
                         Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
                         return;
@@ -766,6 +839,18 @@ namespace oomtm450PuckMod_CurvedStick {
                 skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
 
                 skinnedMeshRenderer.rootBone.SetParent(gameObject.transform, false);
+
+                // Remove old prefab gameObjects.
+                Transform baseClone = gameObject.transform.GetChild(0);
+                UnityEngine.GameObject.Destroy(baseClone.GetChild(0).gameObject);
+                Transform heelClone = baseClone.GetChild(2);
+                UnityEngine.GameObject.Destroy(heelClone.GetChild(0).gameObject);
+                Transform middleClone = heelClone.GetChild(1);
+                UnityEngine.GameObject.Destroy(middleClone.GetChild(0).gameObject);
+                Transform toeClone = middleClone.GetChild(1);
+                UnityEngine.GameObject.Destroy(toeClone.GetChild(0).gameObject);
+                Transform tipClone = toeClone.GetChild(1);
+                UnityEngine.GameObject.Destroy(tipClone.GetChild(0).gameObject);
             }
 
             // Set stick mesh values.

@@ -70,18 +70,15 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (_assetBundle == null)
                         _assetBundle = AssetBundle.LoadFromFile(filePath);
 
-                    //foreach (string test in _assetBundle.GetAllAssetNames())
-                        //Errors.Add(test);
-
                     new Mesh().UploadMeshData(true);
 
-                    GameObject mesh = _assetBundle.LoadAsset<GameObject>("assets/curvedstick/stick.prefab");
+                    GameObject mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/stick.prefab");
                     Meshes.Add(STICK, mesh);
 
-                    mesh = _assetBundle.LoadAsset<GameObject>("assets/curvedstick/blade.prefab");
+                    mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/blade.prefab");
                     Meshes.Add(BLADE, mesh);
 
-                    //mesh = _assetBundle.LoadAsset<GameObject>("assets/curvedstick/tape.prefab"); // TODO
+                    //mesh = _assetBundle.LoadAsset<GameObject>("assets/assetbundle/tape.prefab"); // TODO
                     Meshes.Add(TAPE, null);
 
                     _assetBundle.Unload(false);
