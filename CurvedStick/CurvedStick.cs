@@ -510,12 +510,13 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
                             Player notReplayPlayer = PlayerManager.Instance.GetPlayerByClientId(_player.OwnerClientId - REPLAY_PLAYER_OFFSET);
-                            if (notReplayPlayer) {
-                                if (notReplayPlayer.IsLocalPlayer)
-                                    SetCurvedStick(_player, ClientConfig);
-                                else
-                                    SetCurvedStick(_player, _playersCurve[_player.OwnerClientId - REPLAY_PLAYER_OFFSET]);
-                            }
+                            if (!notReplayPlayer)
+                                continue;
+
+                            if (notReplayPlayer.IsLocalPlayer)
+                                SetCurvedStick(_player, ClientConfig);
+                            else
+                                SetCurvedStick(_player, _playersCurve[_player.OwnerClientId - REPLAY_PLAYER_OFFSET]);
                         }
                         break;
 
