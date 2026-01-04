@@ -979,6 +979,11 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 Logging.Log($"Enabling...", ServerConfig, true);
 
+                if (Application.version != Constants.CURRENT_APPLICATION_VERSION) {
+                    Logging.Log($"Server game version is {Application.version} and not {Constants.CURRENT_APPLICATION_VERSION}. Mod will not be enabled.", ServerConfig);
+                    return false;
+                }
+
                 _harmony.PatchAll();
 
                 Logging.Log($"Enabled.", ServerConfig, true);
