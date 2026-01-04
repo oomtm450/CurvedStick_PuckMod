@@ -4,3 +4,7 @@
 
 /.vs
 /Template/obj
+/CurvedStick/obj/Debug/net4.8
+/CurvedStick/bin/Release/net4.8
+/CurvedStick/obj/Release/net4.8
+/CurvedStick/obj

@@ -1,6 +1,6 @@
-﻿namespace oomtm450PuckMod_Template.Configs {
+﻿namespace oomtm450PuckMod_CurvedStick.Configs {
     /// <summary>
-    /// Class containing the configuration from oomtm450_template_clientconfig.json used for this mod.
+    /// Class containing the configuration interface for this mod.
     /// </summary>
     public interface IConfig {
         /// <summary>
