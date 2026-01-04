@@ -112,14 +112,23 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
                             ClientConfig playerCurve;
+                            PlayerHandedness handedness;
                             try {
                                 playerCurve = _playersCurve[player.OwnerClientId - REPLAY_PLAYER_OFFSET];
+                                Player realPlayer = PlayerManager.Instance.GetPlayerByClientId(player.OwnerClientId - REPLAY_PLAYER_OFFSET);
+                                if (!realPlayer)
+                                    continue;
+
+                                handedness = realPlayer.Handedness.Value;
                             }
                             catch (KeyNotFoundException) {
                                 continue;
                             }
+                            catch (NullReferenceException) {
+                                continue;
+                            }
 
-                            SetCurvedStick(player, playerCurve);
+                            SetCurvedStick(player, playerCurve, handedness);
                         }
 
                         NetworkCommunication.SendDataToAll(nameof(SetCurvedStick) + "ALLREPLAY", "1", Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
@@ -510,14 +519,14 @@ namespace oomtm450PuckMod_CurvedStick {
                             return;
 
                         foreach (Player _player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
-                            Player notReplayPlayer = PlayerManager.Instance.GetPlayerByClientId(_player.OwnerClientId - REPLAY_PLAYER_OFFSET);
-                            if (!notReplayPlayer)
+                            Player realPlayer = PlayerManager.Instance.GetPlayerByClientId(_player.OwnerClientId - REPLAY_PLAYER_OFFSET);
+                            if (!realPlayer)
                                 continue;
 
-                            if (notReplayPlayer.IsLocalPlayer)
-                                SetCurvedStick(_player, ClientConfig);
+                            if (realPlayer.IsLocalPlayer)
+                                SetCurvedStick(_player, ClientConfig, realPlayer.Handedness.Value);
                             else
-                                SetCurvedStick(_player, _playersCurve[_player.OwnerClientId - REPLAY_PLAYER_OFFSET]);
+                                SetCurvedStick(_player, _playersCurve[_player.OwnerClientId - REPLAY_PLAYER_OFFSET], realPlayer.Handedness.Value);
                         }
                         break;
 
@@ -613,6 +622,13 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!player || player.Role.Value != PlayerRole.Attacker)
                 return;
 
+            SetCurvedStick(player, curve, player.Handedness.Value);
+        }
+
+        private static void SetCurvedStick(Player player, ClientConfig curve, PlayerHandedness handedness) {
+            if (!player || player.Role.Value != PlayerRole.Attacker)
+                return;
+
             if (_curvedStickAsset == null) {
                 _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
                 _curvedStickAsset.LoadAssets();
@@ -642,15 +658,15 @@ namespace oomtm450PuckMod_CurvedStick {
 
             GameObject stickMesh = stickMeshTransform.gameObject;
 
-            string handedness;
-            if (player.Handedness.Value == PlayerHandedness.Right)
-                handedness = CurvedStickAsset.RIGHT;
+            string handednessStr;
+            if (handedness == PlayerHandedness.Right)
+                handednessStr = CurvedStickAsset.RIGHT;
             else
-                handedness = CurvedStickAsset.LEFT;
+                handednessStr = CurvedStickAsset.LEFT;
 
             if (!ServerFunc.IsDedicatedServer()) {
                 SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
-                SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handedness);
+                SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handednessStr);
             }
             else {
                 Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
@@ -658,12 +674,12 @@ namespace oomtm450PuckMod_CurvedStick {
 
                 // Set blade collider for puck.
                 GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
+                SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
                 ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
 
                 // Set blade collider for stick.
                 GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handedness);
+                SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
                 ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
             }
         }
