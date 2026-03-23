@@ -199,7 +199,7 @@ namespace oomtm450PuckMod_CurvedStick {
         [HarmonyPatch(typeof(PhysicsManager), "Update")]
         public class PhysicsManager_Update_ClientPatch { // TODO : Check for better function for this.
             [HarmonyPostfix]
-            public static void Postfix(Player player) {
+            public static void Postfix() {
                 // If this is the server, do not use the patch.
                 if (ServerFunc.IsDedicatedServer())
                     return;
