@@ -100,10 +100,10 @@ namespace oomtm450PuckMod_CurvedStick {
         #endregion
 
         /// <summary>
-        /// Class that patches the Update event from ServerManager.
+        /// Class that patches the Update event from PhysicsManager.
         /// </summary>
-        [HarmonyPatch(typeof(ServerManager), "Update")]
-        public static class ServerManager_Update_Patch {
+        [HarmonyPatch(typeof(PhysicsManager), "Update")]
+        public class PhysicsManager_Update_Patch {
             [HarmonyPrefix]
             public static bool Prefix() {
                 if (!ServerFunc.IsDedicatedServer())
@@ -167,7 +167,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(ServerManager_Update_Patch)} Prefix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(PhysicsManager_Update_Patch)} Prefix().\n{ex}");
                 }
 
                 return true;
