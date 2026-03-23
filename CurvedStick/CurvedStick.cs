@@ -237,23 +237,23 @@ namespace oomtm450PuckMod_CurvedStick {
         [HarmonyPatch(typeof(ChatManager), nameof(ChatManager.Client_SendChatMessage))]
         public class ChatManager_Client_SendChatMessage_Patch {
             [HarmonyPrefix]
-            public static bool Prefix(string message, bool useTeamChat) {
+            public static bool Prefix(string content, bool isQuickChat, bool isTeamChat) {
                 try {
                     // If this is the server, do not use the patch.
                     if (ServerFunc.IsDedicatedServer())
                         return true;
 
-                    if (message.StartsWith(@"/")) {
-                        message = message.ToLowerInvariant();
+                    if (content.StartsWith(@"/")) {
+                        content = content.ToLowerInvariant();
 
                         bool changeCurve = false;
-                        if (message.StartsWith(@"/curve")) {
-                            message = message.Replace(@"/curve", "").Trim();
+                        if (content.StartsWith(@"/curve")) {
+                            content = content.Replace(@"/curve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
+                            if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
                             else {
-                                string[] splittedMessageCurve = message.Split(' ');
+                                string[] splittedMessageCurve = content.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
                                     if (int.TryParse(splittedMessageCurve[i], out int curveValue)) {
                                         switch (i) {
@@ -299,13 +299,13 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/heelcurve")) {
-                            message = message.Replace(@"/heelcurve", "").Trim();
+                        else if (content.StartsWith(@"/heelcurve")) {
+                            content = content.Replace(@"/heelcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
+                            if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
                             else {
-                                if (int.TryParse(message, out int heelCurveValue)) {
+                                if (int.TryParse(content, out int heelCurveValue)) {
                                     if (heelCurveValue > Configs.ClientConfig.HEEL_MAX)
                                         heelCurveValue = Configs.ClientConfig.HEEL_MAX;
                                     else if (heelCurveValue < Configs.ClientConfig.HEEL_MIN)
@@ -316,13 +316,13 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/middlecurve")) {
-                            message = message.Replace(@"/middlecurve", "").Trim();
+                        else if (content.StartsWith(@"/middlecurve")) {
+                            content = content.Replace(@"/middlecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
+                            if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
                             else {
-                                if (int.TryParse(message, out int middleCurveValue)) {
+                                if (int.TryParse(content, out int middleCurveValue)) {
                                     if (middleCurveValue > Configs.ClientConfig.MIDDLE_MAX)
                                         middleCurveValue = Configs.ClientConfig.MIDDLE_MAX;
                                     else if (middleCurveValue < Configs.ClientConfig.MIDDLE_MIN)
@@ -333,13 +333,13 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/toecurve")) {
-                            message = message.Replace(@"/toecurve", "").Trim();
+                        else if (content.StartsWith(@"/toecurve")) {
+                            content = content.Replace(@"/toecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
+                            if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
                             else {
-                                if (int.TryParse(message, out int toeCurveValue)) {
+                                if (int.TryParse(content, out int toeCurveValue)) {
                                     if (toeCurveValue > Configs.ClientConfig.TOE_MAX)
                                         toeCurveValue = Configs.ClientConfig.TOE_MAX;
                                     else if (toeCurveValue < Configs.ClientConfig.TOE_MIN)
@@ -350,13 +350,13 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/tipcurve")) {
-                            message = message.Replace(@"/tipcurve", "").Trim();
+                        else if (content.StartsWith(@"/tipcurve")) {
+                            content = content.Replace(@"/tipcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
+                            if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The tip curve is {ClientConfig.TipCurve}");
                             else {
-                                if (int.TryParse(message, out int tipCurveValue)) {
+                                if (int.TryParse(content, out int tipCurveValue)) {
                                     if (tipCurveValue > Configs.ClientConfig.TIP_MAX)
                                         tipCurveValue = Configs.ClientConfig.TIP_MAX;
                                     else if (tipCurveValue < Configs.ClientConfig.TIP_MIN)
@@ -380,16 +380,16 @@ namespace oomtm450PuckMod_CurvedStick {
             }
 
             [HarmonyPostfix]
-            public static void Postfix(string message, bool useTeamChat) {
+            public static void Postfix(string content, bool isQuickChat, bool isTeamChat) {
                 try {
                     // If this is the server, do not use the patch.
                     if (ServerFunc.IsDedicatedServer())
                         return;
 
-                    if (message.StartsWith(@"/")) {
-                        message = message.ToLowerInvariant();
+                    if (content.StartsWith(@"/")) {
+                        content = content.ToLowerInvariant();
 
-                        if (message.StartsWith(@"/help") || message.StartsWith(@"/curvehelp"))
+                        if (content.StartsWith(@"/help") || content.StartsWith(@"/curvehelp"))
                             AddClientChatMessage(HELP_MESSAGE);
                     }
                 }
