@@ -1002,7 +1002,7 @@ namespace oomtm450PuckMod_CurvedStick {
             }
         }
 
-        public static void AddClientChatMessage(string message) { // TODO : Fix RPC crash.
+        public static void AddClientChatMessage(string message) {
             ChatMessage chatMsg = new ChatMessage {
                 SteamID = null,
                 Username = null,
@@ -1013,7 +1013,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 IsTeamChat = false,
                 IsSystem = true,
             };
-            EventManager.TriggerEvent("Event_Server_OnChatMessageReceived", new Dictionary<string, object> { { "chatMessage", chatMsg } });
+            ChatManager.Instance.AddChatMessage(chatMsg);
         }
 
         /// <summary>
