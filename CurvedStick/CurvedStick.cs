@@ -16,7 +16,7 @@ namespace oomtm450PuckMod_CurvedStick {
     /// <summary>
     /// Class containing the main code for the CurvedStick patch.
     /// </summary>
-    public class CurvedStick : IPuckMod {
+    public class CurvedStick : IPuckPlugin {
         #region Constants
         /// <summary>
         /// Const string, version of the mod.
