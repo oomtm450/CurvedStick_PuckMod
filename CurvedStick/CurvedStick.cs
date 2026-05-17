@@ -37,9 +37,9 @@ namespace oomtm450PuckMod_CurvedStick {
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
-        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX} {Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX} {Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX} {Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n* <b>/heelcurve</b> - Adjust the curve on the heel ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n";
+        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX} {Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX} {Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX} {Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n* <b>/resetcurve</b> - Reset all curve values\n* <b>/heelcurve</b> - Adjust the curve on the heel ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n";
 
-        private const ulong REPLAY_PLAYER_OFFSET = 1337UL;
+        private const ulong REPLAY_PLAYER_OFFSET = 1337UL; // TODO : Verify this is still true.
         #endregion
 
         #region Fields/Properties
@@ -248,8 +248,11 @@ namespace oomtm450PuckMod_CurvedStick {
                         content = content.ToLowerInvariant();
 
                         bool changeCurve = false;
-                        if (content.StartsWith(@"/curve")) {
-                            content = content.Replace(@"/curve", "").Trim();
+                        if (content.StartsWith(@"/curve") || content.StartsWith(@"/resetcurve")) {
+                            if (content.StartsWith(@"/resetcurve"))
+                                content += "0 0 0 0";
+
+                            content = content.Replace("/resetcurve", "").Replace(@"/curve", "").Trim();
 
                             if (string.IsNullOrEmpty(content))
                                 AddClientChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
