@@ -1,7 +1,6 @@
 ﻿using HarmonyLib;
 using oomtm450PuckMod_CurvedStick.Configs;
 using oomtm450PuckMod_CurvedStick.SystemFunc;
-using SingularityGroup.HotReload;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -21,7 +20,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.3.3DEV";
+        private const string MOD_VERSION = "0.3.3";
 
         /// <summary>
         /// List of string, last released versions of the mod.
