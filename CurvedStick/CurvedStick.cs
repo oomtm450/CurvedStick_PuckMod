@@ -91,7 +91,7 @@ namespace oomtm450PuckMod_CurvedStick {
         private static bool _updateAllSticksForReplay = false;
         private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
 
-        private static int _frameCounter = 0;
+        private static int _frameCounter = 1;
 
         /// <summary>
         /// LockDictionary of ulong and DateTime, last time a mod out of date message was sent to a client (ulong clientId).
@@ -139,7 +139,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                     else {
                         if (++_frameCounter % 20 == 0) { // Check and send sticks update every x frames.
-                            _frameCounter = 0;
+                            _frameCounter = 1;
                             List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
                             _sticksToUpdate.Clear();
 
