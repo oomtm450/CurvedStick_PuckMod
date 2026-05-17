@@ -4,6 +4,7 @@ using oomtm450PuckMod_CurvedStick.SystemFunc;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -14,12 +15,12 @@ namespace oomtm450PuckMod_CurvedStick {
     /// <summary>
     /// Class containing the main code for the CurvedStick patch.
     /// </summary>
-    public class CurvedStick : IPuckMod {
+    public class CurvedStick : IPuckPlugin {
         #region Constants
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.3.1";
+        private const string MOD_VERSION = "0.3.3";
 
         /// <summary>
         /// List of string, last released versions of the mod.
@@ -29,11 +30,13 @@ namespace oomtm450PuckMod_CurvedStick {
             "0.2.0",
             "0.2.1",
             "0.3.0",
+            "0.3.1",
+            "0.3.2",
         });
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
-        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({ClientConfig.HEEL_MIN}-{ClientConfig.HEEL_MAX} {ClientConfig.MIDDLE_MIN}-{ClientConfig.MIDDLE_MAX} {ClientConfig.TOE_MIN}-{ClientConfig.TOE_MAX} {ClientConfig.TIP_MIN}-{ClientConfig.TIP_MAX})\n* <b>/heelcurve</b> - Adjust the curve on the heel ({ClientConfig.HEEL_MIN}-{ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({ClientConfig.MIDDLE_MIN}-{ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({ClientConfig.TOE_MIN}-{ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({ClientConfig.TIP_MIN}-{ClientConfig.TIP_MAX})\n";
+        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX} {Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX} {Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX} {Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n* <b>/resetcurve</b> - Reset all curve values\n* <b>/heelcurve</b> - Adjust the curve on the heel ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n";
 
         private const ulong REPLAY_PLAYER_OFFSET = 1337UL;
         #endregion
@@ -45,18 +48,18 @@ namespace oomtm450PuckMod_CurvedStick {
         private static readonly Harmony _harmony = new Harmony(Constants.MOD_NAME);
 
         /// <summary>
-        /// ServerConfig, config set and sent by the server.
+        /// Configs.ServerConfig, config set and sent by the server.
         /// </summary>
-        private static ServerConfig ServerConfig { get; set; } = new ServerConfig();
+        private static Configs.ServerConfig ServerConfig { get; set; } = new Configs.ServerConfig();
 
         /// <summary>
-        /// ServerConfig, config set by the client.
+        /// Configs.ServerConfig, config set by the client.
         /// </summary>
-        private static ClientConfig ClientConfig { get; set; } = new ClientConfig();
+        private static Configs.ClientConfig ClientConfig { get; set; } = new Configs.ClientConfig();
 
         private static CurvedStickAsset _curvedStickAsset = null;
 
-        private static readonly LockDictionary<ulong, ClientConfig> _playersCurve = new LockDictionary<ulong, ClientConfig>();
+        private static readonly LockDictionary<ulong, Configs.ClientConfig> _playersCurve = new LockDictionary<ulong, Configs.ClientConfig>();
 
         #region Client-Side
         private static DateTime _lastDateTimeAskStartupData = DateTime.MinValue;
@@ -87,7 +90,7 @@ namespace oomtm450PuckMod_CurvedStick {
         private static bool _updateAllSticksForReplay = false;
         private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
 
-        private static int _frameCounter = 0;
+        private static int _frameCounter = 1;
 
         /// <summary>
         /// LockDictionary of ulong and DateTime, last time a mod out of date message was sent to a client (ulong clientId).
@@ -97,10 +100,10 @@ namespace oomtm450PuckMod_CurvedStick {
         #endregion
 
         /// <summary>
-        /// Class that patches the Update event from ServerManager.
+        /// Class that patches the Update event from PhysicsManager.
         /// </summary>
-        [HarmonyPatch(typeof(ServerManager), "Update")]
-        public static class ServerManager_Update_Patch {
+        [HarmonyPatch(typeof(PhysicsManager), "Update")]
+        public class PhysicsManager_Update_Patch {
             [HarmonyPrefix]
             public static bool Prefix() {
                 if (!ServerFunc.IsDedicatedServer())
@@ -111,7 +114,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         _updateAllSticksForReplay = false;
 
                         foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
-                            ClientConfig playerCurve;
+                            Configs.ClientConfig playerCurve;
                             PlayerHandedness handedness;
                             try {
                                 playerCurve = _playersCurve[player.OwnerClientId - REPLAY_PLAYER_OFFSET];
@@ -135,7 +138,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                     else {
                         if (++_frameCounter % 20 == 0) { // Check and send sticks update every x frames.
-                            _frameCounter = 0;
+                            _frameCounter = 1;
                             List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
                             _sticksToUpdate.Clear();
 
@@ -145,7 +148,7 @@ namespace oomtm450PuckMod_CurvedStick {
                                 if (player == null || !player)
                                     continue;
 
-                                ClientConfig playerCurve;
+                                Configs.ClientConfig playerCurve;
                                 try {
                                     playerCurve = _playersCurve[clientId];
                                 }
@@ -164,7 +167,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(ServerManager_Update_Patch)} Prefix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(PhysicsManager_Update_Patch)} Prefix().\n{ex}");
                 }
 
                 return true;
@@ -191,19 +194,18 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         /// <summary>
-        /// Class that patches the UpdatePlayer event from UIScoreboard.
+        /// Class that patches the Update event from PhysicsManager.
         /// </summary>
-        [HarmonyPatch(typeof(UIScoreboard), nameof(UIScoreboard.UpdatePlayer))]
-        public class UIScoreboard_UpdatePlayer_Patch {
+        [HarmonyPatch(typeof(PhysicsManager), "Update")]
+        public class PhysicsManager_Update_ClientPatch { // TODO : Check for better function for this.
             [HarmonyPostfix]
-            public static void Postfix(Player player) {
+            public static void Postfix() {
                 // If this is the server, do not use the patch.
                 if (ServerFunc.IsDedicatedServer())
                     return;
 
                 try {
                     if (!_hasRegisteredWithNamedMessageHandler || !_serverHasResponded) {
-                        //Logging.Log($"RegisterNamedMessageHandler {Constants.FROM_SERVER}.", ClientConfig);
                         NetworkManager.Singleton.CustomMessagingManager.RegisterNamedMessageHandler(Constants.FROM_SERVER_TO_CLIENT, ReceiveData);
                         _hasRegisteredWithNamedMessageHandler = true;
 
@@ -220,73 +222,76 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                     else if (_addServerModVersionOutOfDateMessage) {
                         _addServerModVersionOutOfDateMessage = false;
-                        UIChat.Instance.AddChatMessage($"Server's {Constants.WORKSHOP_MOD_NAME} mod is out of date. Some functionalities might not work properly.");
+                        AddClientChatMessage($"Server's {Constants.WORKSHOP_MOD_NAME} mod is out of date. Some functionalities might not work properly.");
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(UIScoreboard_UpdatePlayer_Patch)} Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(PhysicsManager_Update_ClientPatch)} Postfix().\n{ex}");
                 }
             }
         }
 
         /// <summary>
-        /// Class that patches the Client_SendClientChatMessage event from UIChat.
+        /// Class that patches the Client_SendChatMessage event from ChatManager.
         /// </summary>
-        [HarmonyPatch(typeof(UIChat), nameof(UIChat.Client_SendClientChatMessage))]
-        public class UIChat_Client_SendClientChatMessage_Patch {
+        [HarmonyPatch(typeof(ChatManager), nameof(ChatManager.Client_SendChatMessage))]
+        public class ChatManager_Client_SendChatMessage_Patch {
             [HarmonyPrefix]
-            public static bool Prefix(string message, bool useTeamChat) {
+            public static bool Prefix(string content, bool isQuickChat, bool isTeamChat) {
                 try {
                     // If this is the server, do not use the patch.
                     if (ServerFunc.IsDedicatedServer())
                         return true;
 
-                    if (message.StartsWith(@"/")) {
-                        message = message.ToLowerInvariant();
+                    if (content.StartsWith(@"/")) {
+                        content = content.ToLowerInvariant();
 
                         bool changeCurve = false;
-                        if (message.StartsWith(@"/curve")) {
-                            message = message.Replace(@"/curve", "").Trim();
+                        if (content.StartsWith(@"/curve") || content.StartsWith(@"/resetcurve")) {
+                            if (content.StartsWith(@"/resetcurve"))
+                                content += "0 0 0 0";
 
-                            if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
+                            content = content.Replace("/resetcurve", "").Replace(@"/curve", "").Trim();
+
+                            if (string.IsNullOrEmpty(content))
+                                AddClientChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
                             else {
-                                string[] splittedMessageCurve = message.Split(' ');
+                                string[] splittedMessageCurve = content.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
                                     if (int.TryParse(splittedMessageCurve[i], out int curveValue)) {
                                         switch (i) {
                                             case 0:
-                                                if (curveValue > ClientConfig.HEEL_MAX)
-                                                    curveValue = ClientConfig.HEEL_MAX;
-                                                else if (curveValue < ClientConfig.HEEL_MIN)
-                                                    curveValue = ClientConfig.HEEL_MIN;
+                                                if (curveValue > Configs.ClientConfig.HEEL_MAX)
+                                                    curveValue = Configs.ClientConfig.HEEL_MAX;
+                                                else if (curveValue < Configs.ClientConfig.HEEL_MIN)
+                                                    curveValue = Configs.ClientConfig.HEEL_MIN;
 
                                                 ClientConfig.HeelCurve = curveValue;
                                                 break;
 
                                             case 1:
-                                                if (curveValue > ClientConfig.MIDDLE_MAX)
-                                                    curveValue = ClientConfig.MIDDLE_MAX;
-                                                else if (curveValue < ClientConfig.MIDDLE_MIN)
-                                                    curveValue = ClientConfig.MIDDLE_MIN;
+                                                if (curveValue > Configs.ClientConfig.MIDDLE_MAX)
+                                                    curveValue = Configs.ClientConfig.MIDDLE_MAX;
+                                                else if (curveValue < Configs.ClientConfig.MIDDLE_MIN)
+                                                    curveValue = Configs.ClientConfig.MIDDLE_MIN;
 
                                                 ClientConfig.MiddleCurve = curveValue;
                                                 break;
 
                                             case 2:
-                                                if (curveValue > ClientConfig.TOE_MAX)
-                                                    curveValue = ClientConfig.TOE_MAX;
-                                                else if (curveValue < ClientConfig.TOE_MIN)
-                                                    curveValue = ClientConfig.TOE_MIN;
+                                                if (curveValue > Configs.ClientConfig.TOE_MAX)
+                                                    curveValue = Configs.ClientConfig.TOE_MAX;
+                                                else if (curveValue < Configs.ClientConfig.TOE_MIN)
+                                                    curveValue = Configs.ClientConfig.TOE_MIN;
 
                                                 ClientConfig.ToeCurve = curveValue;
                                                 break;
 
                                             case 3:
-                                                if (curveValue > ClientConfig.TIP_MAX)
-                                                    curveValue = ClientConfig.TIP_MAX;
-                                                else if (curveValue < ClientConfig.TIP_MIN)
-                                                    curveValue = ClientConfig.TIP_MIN;
+                                                if (curveValue > Configs.ClientConfig.TIP_MAX)
+                                                    curveValue = Configs.ClientConfig.TIP_MAX;
+                                                else if (curveValue < Configs.ClientConfig.TIP_MIN)
+                                                    curveValue = Configs.ClientConfig.TIP_MIN;
 
                                                 ClientConfig.TipCurve = curveValue;
                                                 break;
@@ -297,68 +302,68 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/heelcurve")) {
-                            message = message.Replace(@"/heelcurve", "").Trim();
+                        else if (content.StartsWith(@"/heelcurve")) {
+                            content = content.Replace(@"/heelcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
+                            if (string.IsNullOrEmpty(content))
+                                AddClientChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
                             else {
-                                if (int.TryParse(message, out int heelCurveValue)) {
-                                    if (heelCurveValue > ClientConfig.HEEL_MAX)
-                                        heelCurveValue = ClientConfig.HEEL_MAX;
-                                    else if (heelCurveValue < ClientConfig.HEEL_MIN)
-                                        heelCurveValue = ClientConfig.HEEL_MIN;
+                                if (int.TryParse(content, out int heelCurveValue)) {
+                                    if (heelCurveValue > Configs.ClientConfig.HEEL_MAX)
+                                        heelCurveValue = Configs.ClientConfig.HEEL_MAX;
+                                    else if (heelCurveValue < Configs.ClientConfig.HEEL_MIN)
+                                        heelCurveValue = Configs.ClientConfig.HEEL_MIN;
 
                                     ClientConfig.HeelCurve = heelCurveValue;
                                     changeCurve = true;
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/middlecurve")) {
-                            message = message.Replace(@"/middlecurve", "").Trim();
+                        else if (content.StartsWith(@"/middlecurve")) {
+                            content = content.Replace(@"/middlecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
+                            if (string.IsNullOrEmpty(content))
+                                AddClientChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
                             else {
-                                if (int.TryParse(message, out int middleCurveValue)) {
-                                    if (middleCurveValue > ClientConfig.MIDDLE_MAX)
-                                        middleCurveValue = ClientConfig.MIDDLE_MAX;
-                                    else if (middleCurveValue < ClientConfig.MIDDLE_MIN)
-                                        middleCurveValue = ClientConfig.MIDDLE_MIN;
+                                if (int.TryParse(content, out int middleCurveValue)) {
+                                    if (middleCurveValue > Configs.ClientConfig.MIDDLE_MAX)
+                                        middleCurveValue = Configs.ClientConfig.MIDDLE_MAX;
+                                    else if (middleCurveValue < Configs.ClientConfig.MIDDLE_MIN)
+                                        middleCurveValue = Configs.ClientConfig.MIDDLE_MIN;
 
                                     ClientConfig.MiddleCurve = middleCurveValue;
                                     changeCurve = true;
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/toecurve")) {
-                            message = message.Replace(@"/toecurve", "").Trim();
+                        else if (content.StartsWith(@"/toecurve")) {
+                            content = content.Replace(@"/toecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
+                            if (string.IsNullOrEmpty(content))
+                                AddClientChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
                             else {
-                                if (int.TryParse(message, out int toeCurveValue)) {
-                                    if (toeCurveValue > ClientConfig.TOE_MAX)
-                                        toeCurveValue = ClientConfig.TOE_MAX;
-                                    else if (toeCurveValue < ClientConfig.TOE_MIN)
-                                        toeCurveValue = ClientConfig.TOE_MIN;
+                                if (int.TryParse(content, out int toeCurveValue)) {
+                                    if (toeCurveValue > Configs.ClientConfig.TOE_MAX)
+                                        toeCurveValue = Configs.ClientConfig.TOE_MAX;
+                                    else if (toeCurveValue < Configs.ClientConfig.TOE_MIN)
+                                        toeCurveValue = Configs.ClientConfig.TOE_MIN;
 
                                     ClientConfig.ToeCurve = toeCurveValue;
                                     changeCurve = true;
                                 }
                             }
                         }
-                        else if (message.StartsWith(@"/tipcurve")) {
-                            message = message.Replace(@"/tipcurve", "").Trim();
+                        else if (content.StartsWith(@"/tipcurve")) {
+                            content = content.Replace(@"/tipcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(message))
-                                UIChat.Instance.AddChatMessage($"The tip curve is {ClientConfig.TipCurve}");
+                            if (string.IsNullOrEmpty(content))
+                                AddClientChatMessage($"The tip curve is {ClientConfig.TipCurve}");
                             else {
-                                if (int.TryParse(message, out int tipCurveValue)) {
-                                    if (tipCurveValue > ClientConfig.TIP_MAX)
-                                        tipCurveValue = ClientConfig.TIP_MAX;
-                                    else if (tipCurveValue < ClientConfig.TIP_MIN)
-                                        tipCurveValue = ClientConfig.TIP_MIN;
+                                if (int.TryParse(content, out int tipCurveValue)) {
+                                    if (tipCurveValue > Configs.ClientConfig.TIP_MAX)
+                                        tipCurveValue = Configs.ClientConfig.TIP_MAX;
+                                    else if (tipCurveValue < Configs.ClientConfig.TIP_MIN)
+                                        tipCurveValue = Configs.ClientConfig.TIP_MIN;
 
                                     ClientConfig.TipCurve = tipCurveValue;
                                     changeCurve = true;
@@ -371,48 +376,51 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(UIChat_Client_SendClientChatMessage_Patch)} Prefix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(ChatManager_Client_SendChatMessage_Patch)} Prefix().\n{ex}");
                 }
 
                 return true;
             }
 
             [HarmonyPostfix]
-            public static void Postfix(string message, bool useTeamChat) {
+            public static void Postfix(string content, bool isQuickChat, bool isTeamChat) {
                 try {
                     // If this is the server, do not use the patch.
                     if (ServerFunc.IsDedicatedServer())
                         return;
 
-                    if (message.StartsWith(@"/")) {
-                        message = message.ToLowerInvariant();
+                    if (content.StartsWith(@"/")) {
+                        content = content.ToLowerInvariant();
 
-                        if (message.StartsWith(@"/help") || message.StartsWith(@"/curvehelp"))
-                            UIChat.Instance.AddChatMessage(HELP_MESSAGE);
+                        if (content.StartsWith(@"/help") || content.StartsWith(@"/curvehelp"))
+                            AddClientChatMessage(HELP_MESSAGE);
                     }
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(UIChat_Client_SendClientChatMessage_Patch)} Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(ChatManager_Client_SendChatMessage_Patch)} Postfix().\n{ex}");
                 }
             }
         }
 
         /// <summary>
-        /// Class that patches the Server_ResetGameState event from GameManager.
+        /// Class that patches the Server_SetGameState event from GameManager.
         /// </summary>
-        [HarmonyPatch(typeof(GameManager), nameof(GameManager.Server_ResetGameState))]
-        public class GameManager_Server_ResetGameState_Patch {
+        [HarmonyPatch(typeof(GameManager), nameof(GameManager.Server_SetGameState))]
+        public class GameManager_Server_SetGameState_Patch {
             [HarmonyPostfix]
-            public static void Postfix(bool resetPhase) {
+            public static void Postfix(GamePhase? phase, int? tick, int? period, int? blueScore, int? redScore, bool? isOvertime) {
                 try {
                     // If this is not the server, do not use the patch.
                     if (!ServerFunc.IsDedicatedServer())
                         return;
-                    
+
+                    if (phase != GamePhase.PreGame)
+                        return;
+
                     _sentOutOfDateMessage.Clear();
                 }
                 catch (Exception ex) {
-                    Logging.LogError($"Error in {nameof(GameManager_Server_ResetGameState_Patch)} Postfix().\n{ex}");
+                    Logging.LogError($"Error in {nameof(GameManager_Server_SetGameState_Patch)} Postfix().\n{ex}");
                 }
             }
         }
@@ -422,8 +430,17 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Used to set server-sided stuff after the game has loaded.
         /// </summary>
         /// <param name="message">Dictionary of string and object, content of the event.</param>
-        public static void Event_OnGamePhaseChanged(Dictionary<string, object> message) {
-            if (!ServerFunc.IsDedicatedServer() || (GamePhase)message["newGamePhase"] != GamePhase.Replay)
+        public static void Event_Everyone_OnGameStateChanged(Dictionary<string, object> message) {
+            if (!ServerFunc.IsDedicatedServer())
+                return;
+
+            GameState oldGameState = (GameState)message["oldGameState"];
+            GameState newGameState = (GameState)message["newGameState"];
+
+            if (oldGameState.Phase == newGameState.Phase)
+                return;
+
+            if (newGameState.Phase != GamePhase.Replay)
                 return;
 
             try {
@@ -431,7 +448,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 new Timer(UpdateAllSticksForReplayTimerCallback, null, 500, Timeout.Infinite);
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in {nameof(Event_OnGamePhaseChanged)}.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_Everyone_OnGameStateChanged)}.\n{ex}");
             }
         }
 
@@ -440,7 +457,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Used to set server-sided stuff after the game has loaded.
         /// </summary>
         /// <param name="message">Dictionary of string and object, content of the event.</param>
-        public static void Event_OnClientConnected(Dictionary<string, object> message) {
+        public static void Event_Everyone_OnClientConnected(Dictionary<string, object> message) {
             if (!ServerFunc.IsDedicatedServer())
                 return;
 
@@ -452,7 +469,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in {nameof(Event_OnClientConnected)}.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_Everyone_OnClientConnected)}.\n{ex}");
             }
         }
 
@@ -461,7 +478,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Used to set server-sided stuff after the game has loaded.
         /// </summary>
         /// <param name="message">Dictionary of string and object, content of the event.</param>
-        public static void Event_OnClientDisconnected(Dictionary<string, object> message) {
+        public static void Event_Everyone_OnClientDisconnected(Dictionary<string, object> message) {
             if (!ServerFunc.IsDedicatedServer())
                 return;
 
@@ -473,7 +490,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 _sticksToUpdate.Remove(clientId);
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in {nameof(Event_OnClientDisconnected)}.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_Everyone_OnClientDisconnected)}.\n{ex}");
             }
         }
 
@@ -548,7 +565,7 @@ namespace oomtm450PuckMod_CurvedStick {
                                 break;
 
                             Logging.Log($"Warning client {clientId} mod out of date.", ServerConfig);
-                            UIChat.Instance.Server_SendSystemChatMessage($"{PlayerManager.Instance.GetPlayerByClientId(clientId).Username.Value} : {Constants.WORKSHOP_MOD_NAME} Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
+                            ChatManager.Instance.BroadcastMessage($"{PlayerManager.Instance.GetPlayerByClientId(clientId).Username.Value} : {Constants.WORKSHOP_MOD_NAME} Mod is out of date. Please unsubscribe from {Constants.WORKSHOP_MOD_NAME} in the workshop and restart your game to update.");
                             _sentOutOfDateMessage[clientId] = utcNow;
                         }
                         break;
@@ -559,7 +576,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         StringBuilder dataToSend = new StringBuilder();
-                        foreach (KeyValuePair<ulong, ClientConfig> curve in _playersCurve)
+                        foreach (KeyValuePair<ulong, Configs.ClientConfig> curve in _playersCurve)
                             dataToSend.Append($"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}!");
 
                         string dataToSendStr = dataToSend.ToString();
@@ -569,8 +586,8 @@ namespace oomtm450PuckMod_CurvedStick {
 
                     case Constants.NEW_CURVED_STICK_VALUES: // SERVER-SIDE : Receive new stick values and asks everyone to update it.
                         string[] splittedDataStrNewCurveStickValues = dataStr.Split(';');
-                        if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveNewCurveStickValues)) {
-                            curveNewCurveStickValues = new ClientConfig();
+                        if (!_playersCurve.TryGetValue(clientId, out Configs.ClientConfig curveNewCurveStickValues)) {
+                            curveNewCurveStickValues = new Configs.ClientConfig();
                             _playersCurve.Add(clientId, curveNewCurveStickValues);
                         }
 
@@ -586,15 +603,15 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in ReceiveData.\n{ex}");
+                Logging.LogError($"Error in {nameof(ReceiveData)}.\n{ex}");
             }
         }
 
         private static void SetCurvedStickClientReceiveData(string dataStr) {
             string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
             ulong clientId = ulong.Parse(splittedDataStrSetCurvedStick[0]);
-            if (!_playersCurve.TryGetValue(clientId, out ClientConfig curveSetCurvedStick)) {
-                curveSetCurvedStick = new ClientConfig();
+            if (!_playersCurve.TryGetValue(clientId, out Configs.ClientConfig curveSetCurvedStick)) {
+                curveSetCurvedStick = new Configs.ClientConfig();
                 _playersCurve.Add(clientId, curveSetCurvedStick);
             }
 
@@ -618,69 +635,74 @@ namespace oomtm450PuckMod_CurvedStick {
             _updateAllSticksForReplay = true;
         }
 
-        private static void SetCurvedStick(Player player, ClientConfig curve) {
-            if (!player || player.Role.Value != PlayerRole.Attacker)
+        private static void SetCurvedStick(Player player, Configs.ClientConfig curve) {
+            if (!player || player.Role != PlayerRole.Attacker)
                 return;
 
             SetCurvedStick(player, curve, player.Handedness.Value);
         }
 
-        private static void SetCurvedStick(Player player, ClientConfig curve, PlayerHandedness handedness) {
-            if (!player || player.Role.Value != PlayerRole.Attacker)
-                return;
+        private static void SetCurvedStick(Player player, Configs.ClientConfig curve, PlayerHandedness handedness) {
+            try {
+                if (!player || player.Role != PlayerRole.Attacker)
+                    return;
 
-            if (_curvedStickAsset == null) {
-                _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
-                _curvedStickAsset.LoadAssets();
+                if (_curvedStickAsset == null) {
+                    _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
+                    _curvedStickAsset.LoadAssets();
+                }
+
+                if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
+                    if (_curvedStickAsset.Meshes.Count == 0)
+                        Logging.LogError("No mesh found in the assets.");
+                    foreach (string error in _curvedStickAsset.Errors)
+                        Logging.LogError(error);
+
+                    return;
+                }
+
+                // Find parent stickMesh object.
+                Transform stickMeshTransform = player.gameObject.transform.Find("Stick (Attacker)(Clone)");
+                if (!stickMeshTransform)
+                    return;
+
+                stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Rotation Container");
+                if (!stickMeshTransform)
+                    return;
+
+                stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Stick Mesh (Attacker)");
+                if (!stickMeshTransform)
+                    return;
+
+                GameObject stickMesh = stickMeshTransform.gameObject;
+
+                string handednessStr;
+                if (handedness == PlayerHandedness.Right)
+                    handednessStr = CurvedStickAsset.RIGHT;
+                else
+                    handednessStr = CurvedStickAsset.LEFT;
+
+                if (!ServerFunc.IsDedicatedServer()) {
+                    SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
+                    SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handednessStr);
+                }
+                else {
+                    Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
+                    SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = curvedBladeTransform.GetComponentInChildren<SkinnedMeshRenderer>();
+
+                    // Set blade collider for puck.
+                    GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
+                    SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
+                    ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
+
+                    // Set blade collider for stick.
+                    GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
+                    SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
+                    ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
+                }
             }
-
-            if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
-                if (_curvedStickAsset.Meshes.Count == 0)
-                    Logging.LogError("No mesh found in the assets.");
-                foreach (string error in _curvedStickAsset.Errors)
-                    Logging.LogError(error);
-
-                return;
-            }
-
-            // Find parent stickMesh object.
-            Transform stickMeshTransform = player.gameObject.transform.Find("Stick (Attacker)(Clone)");
-            if (!stickMeshTransform)
-                return;
-
-            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Rotation Container");
-            if (!stickMeshTransform)
-                return;
-
-            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Stick Mesh (Attacker)");
-            if (!stickMeshTransform)
-                return;
-
-            GameObject stickMesh = stickMeshTransform.gameObject;
-
-            string handednessStr;
-            if (handedness == PlayerHandedness.Right)
-                handednessStr = CurvedStickAsset.RIGHT;
-            else
-                handednessStr = CurvedStickAsset.LEFT;
-
-            if (!ServerFunc.IsDedicatedServer()) {
-                SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
-                SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handednessStr);
-            }
-            else {
-                Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
-                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = curvedBladeTransform.GetComponentInChildren<SkinnedMeshRenderer>();
-
-                // Set blade collider for puck.
-                GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
-                ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
-
-                // Set blade collider for stick.
-                GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
-                ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetCurvedStick)}.\n{ex}");
             }
         }
 
@@ -691,7 +713,7 @@ namespace oomtm450PuckMod_CurvedStick {
             transform.gameObject.layer = layer;
         }
 
-        private static void SetCurvedStickMagicClient(GameObject stickMesh, SkinnedMeshRenderer prefabSkinnedMeshRenderer, ClientConfig curve,
+        private static void SetCurvedStickMagicClient(GameObject stickMesh, SkinnedMeshRenderer prefabSkinnedMeshRenderer, Configs.ClientConfig curve,
             string handedness) {
             GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
             GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
@@ -792,7 +814,7 @@ namespace oomtm450PuckMod_CurvedStick {
             // TODO : Set tape mesh values.
         }
 
-        private static void SetCurvedStickMagicServer(GameObject gameObject, SkinnedMeshRenderer prefabSkinnedMeshRenderer, ClientConfig curve,
+        private static void SetCurvedStickMagicServer(GameObject gameObject, SkinnedMeshRenderer prefabSkinnedMeshRenderer, Configs.ClientConfig curve,
             string handedness) {
             SkinnedMeshRenderer skinnedMeshRenderer = null;
             bool replaceOldStick = false;
@@ -884,7 +906,7 @@ namespace oomtm450PuckMod_CurvedStick {
             meshCollider.sharedMesh = colliderMesh;
         }
 
-        private static void SetTransformRotationForCurve(SkinnedMeshRenderer skinnedMeshRenderer, string handedness, ClientConfig curve) {
+        private static void SetTransformRotationForCurve(SkinnedMeshRenderer skinnedMeshRenderer, string handedness, Configs.ClientConfig curve) {
             Transform heelTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Heel")).transform;
             heelTransform.localRotation = new Quaternion(
                 heelTransform.localRotation.x,
@@ -947,11 +969,11 @@ namespace oomtm450PuckMod_CurvedStick {
                 ClientConfig);
         }
 
-        private static string FormatCurveStickForCommunication(ClientConfig config) {
+        private static string FormatCurveStickForCommunication(Configs.ClientConfig config) {
             return $"{config.HeelCurve};{config.MiddleCurve};{config.ToeCurve};{config.TipCurve}";
         }
 
-        private static void Event_OnPlayerHandednessChanged(Dictionary<string, object> message) {
+        private static void Event_Everyone_OnPlayerHandednessChanged(Dictionary<string, object> message) {
             try {
                 Player player = (Player)message["player"];
                 if (player.OwnerClientId > REPLAY_PLAYER_OFFSET)
@@ -964,7 +986,7 @@ namespace oomtm450PuckMod_CurvedStick {
             }
             catch (KeyNotFoundException) { }
             catch (Exception ex) {
-                Logging.LogError($"Error in {nameof(Event_OnPlayerHandednessChanged)}.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_Everyone_OnPlayerHandednessChanged)}.\n{ex}");
             }
         }
 
@@ -973,19 +995,33 @@ namespace oomtm450PuckMod_CurvedStick {
         /// Used to reset the config so that it doesn't carry over between servers.
         /// </summary>
         /// <param name="message">Dictionary of string and object, content of the event.</param>
-        public static void Event_Client_OnClientStopped(Dictionary<string, object> message) {
+        public static void Event_OnClientStopped(Dictionary<string, object> message) {
             if (NetworkManager.Singleton == null || ServerFunc.IsDedicatedServer())
                 return;
 
             try {
-                ServerConfig = new ServerConfig();
+                ServerConfig = new Configs.ServerConfig();
 
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in Event_Client_OnClientStopped.\n{ex}");
+                Logging.LogError($"Error in {nameof(Event_OnClientStopped)}.\n{ex}");
             }
+        }
+
+        public static void AddClientChatMessage(string message) {
+            ChatMessage chatMsg = new ChatMessage {
+                SteamID = null,
+                Username = null,
+                Team = null,
+                Content = message,
+                Timestamp = Utils.GetTimestamp(),
+                IsQuickChat = false,
+                IsTeamChat = false,
+                IsSystem = true,
+            };
+            ChatManager.Instance.AddChatMessage(chatMsg);
         }
 
         /// <summary>
@@ -1013,25 +1049,25 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
 
                     Logging.Log("Setting server sided config.", ServerConfig, true);
-                    ServerConfig = ServerConfig.ReadConfig(ServerManager.Instance.AdminSteamIds);
+                    ServerConfig = Configs.ServerConfig.ReadConfig();
                 }
                 else {
                     Logging.Log("Setting client sided config.", ServerConfig, true);
-                    ClientConfig = ClientConfig.ReadConfig();
+                    ClientConfig = Configs.ClientConfig.ReadConfig();
                 }
 
                 Logging.Log("Subscribing to events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.Instance.AddEventListener("Event_OnClientConnected", Event_OnClientConnected);
-                    EventManager.Instance.AddEventListener("Event_OnClientDisconnected", Event_OnClientDisconnected);
-                    EventManager.Instance.AddEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
+                    EventManager.AddEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
+                    EventManager.AddEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
+                    EventManager.AddEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.Instance.AddEventListener("Event_Client_OnClientStopped", Event_Client_OnClientStopped);
+                    EventManager.AddEventListener("Event_OnClientStopped", Event_OnClientStopped);
                 }
 
-                EventManager.Instance.AddEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
+                EventManager.AddEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
 
                 return true;
             }
@@ -1050,15 +1086,15 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log("Unsubscribing from events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.Instance.RemoveEventListener("Event_OnClientConnected", Event_OnClientConnected);
-                    EventManager.Instance.RemoveEventListener("Event_OnClientDisconnected", Event_OnClientDisconnected);
-                    EventManager.Instance.RemoveEventListener("Event_OnGamePhaseChanged", Event_OnGamePhaseChanged);
+                    EventManager.RemoveEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
+                    EventManager.RemoveEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
+                    EventManager.RemoveEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.Instance.RemoveEventListener("Event_Client_OnClientStopped", Event_Client_OnClientStopped);
+                    EventManager.RemoveEventListener("Event_OnClientStopped", Event_OnClientStopped);
                 }
 
-                EventManager.Instance.RemoveEventListener("Event_OnPlayerHandednessChanged", Event_OnPlayerHandednessChanged);
+                EventManager.RemoveEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
 
                 _hasRegisteredWithNamedMessageHandler = false;
                 _serverHasResponded = false;
