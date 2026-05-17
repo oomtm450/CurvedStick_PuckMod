@@ -604,7 +604,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 }
             }
             catch (Exception ex) {
-                Logging.LogError($"Error in ReceiveData.\n{ex}");
+                Logging.LogError($"Error in {nameof(ReceiveData)}.\n{ex}");
             }
         }
 
@@ -644,61 +644,66 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SetCurvedStick(Player player, Configs.ClientConfig curve, PlayerHandedness handedness) {
-            if (!player || player.Role != PlayerRole.Attacker)
-                return;
+            try {
+                if (!player || player.Role != PlayerRole.Attacker)
+                    return;
 
-            if (_curvedStickAsset == null) {
-                _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
-                _curvedStickAsset.LoadAssets();
+                if (_curvedStickAsset == null) {
+                    _curvedStickAsset = new GameObject(Constants.MOD_NAME + "CurvedStickAsset").AddComponent<CurvedStickAsset>();
+                    _curvedStickAsset.LoadAssets();
+                }
+
+                if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
+                    if (_curvedStickAsset.Meshes.Count == 0)
+                        Logging.LogError("No mesh found in the assets.");
+                    foreach (string error in _curvedStickAsset.Errors)
+                        Logging.LogError(error);
+
+                    return;
+                }
+
+                // Find parent stickMesh object.
+                Transform stickMeshTransform = player.gameObject.transform.Find("Stick (Attacker)(Clone)");
+                if (!stickMeshTransform)
+                    return;
+
+                stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Rotation Container");
+                if (!stickMeshTransform)
+                    return;
+
+                stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Stick Mesh (Attacker)");
+                if (!stickMeshTransform)
+                    return;
+
+                GameObject stickMesh = stickMeshTransform.gameObject;
+
+                string handednessStr;
+                if (handedness == PlayerHandedness.Right)
+                    handednessStr = CurvedStickAsset.RIGHT;
+                else
+                    handednessStr = CurvedStickAsset.LEFT;
+
+                if (!ServerFunc.IsDedicatedServer()) {
+                    SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
+                    SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handednessStr);
+                }
+                else {
+                    Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
+                    SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = curvedBladeTransform.GetComponentInChildren<SkinnedMeshRenderer>();
+
+                    // Set blade collider for puck.
+                    GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
+                    SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
+                    ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
+
+                    // Set blade collider for stick.
+                    GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
+                    SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
+                    ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
+                }
             }
-
-            if (_curvedStickAsset.Meshes.Count == 0 || _curvedStickAsset.Errors.Count != 0) {
-                if (_curvedStickAsset.Meshes.Count == 0)
-                    Logging.LogError("No mesh found in the assets.");
-                foreach (string error in _curvedStickAsset.Errors)
-                    Logging.LogError(error);
-
-                return;
-            }
-
-            // Find parent stickMesh object.
-            Transform stickMeshTransform = player.gameObject.transform.Find("Stick (Attacker)(Clone)");
-            if (!stickMeshTransform)
-                return;
-
-            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Rotation Container");
-            if (!stickMeshTransform)
-                return;
-
-            stickMeshTransform = stickMeshTransform.gameObject.transform.Find("Stick Mesh (Attacker)");
-            if (!stickMeshTransform)
-                return;
-
-            GameObject stickMesh = stickMeshTransform.gameObject;
-
-            string handednessStr;
-            if (handedness == PlayerHandedness.Right)
-                handednessStr = CurvedStickAsset.RIGHT;
-            else
-                handednessStr = CurvedStickAsset.LEFT;
-
-            if (!ServerFunc.IsDedicatedServer()) {
-                SkinnedMeshRenderer prefabSkinnedMeshRendererStick = _curvedStickAsset.Meshes[CurvedStickAsset.STICK].transform.GetComponentInChildren<SkinnedMeshRenderer>();
-                SetCurvedStickMagicClient(stickMesh, prefabSkinnedMeshRendererStick, curve, handednessStr);
-            }
-            else {
-                Transform curvedBladeTransform = _curvedStickAsset.Meshes[CurvedStickAsset.BLADE].transform;
-                SkinnedMeshRenderer prefabSkinnedMeshRendererBlade = curvedBladeTransform.GetComponentInChildren<SkinnedMeshRenderer>();
-
-                // Set blade collider for puck.
-                GameObject bladePuckGameObject = stickMesh.transform.Find("Puck Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladePuckGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
-                ChangeLayerOfAllChild(bladePuckGameObject.transform, bladePuckGameObject.layer);
-
-                // Set blade collider for stick.
-                GameObject bladeStickGameObject = stickMesh.transform.Find("Stick Colliders").gameObject.transform.Find("Blade").gameObject;
-                SetCurvedStickMagicServer(bladeStickGameObject, prefabSkinnedMeshRendererBlade, curve, handednessStr);
-                ChangeLayerOfAllChild(bladeStickGameObject.transform, bladeStickGameObject.layer);
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetCurvedStick)}.\n{ex}");
             }
         }
 
