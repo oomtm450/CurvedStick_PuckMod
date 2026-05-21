@@ -113,7 +113,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (_updateAllSticksForReplay) {
                         _updateAllSticksForReplay = false;
 
-                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
+                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value).ToList()) {
                             Configs.ClientConfig playerCurve;
                             PlayerHandedness handedness;
                             try {
@@ -576,7 +576,8 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         StringBuilder dataToSend = new StringBuilder();
-                        foreach (KeyValuePair<ulong, Configs.ClientConfig> curve in _playersCurve)
+                        Dictionary<ulong, Configs.ClientConfig> playersCurve = new Dictionary<ulong, Configs.ClientConfig>(_playersCurve);
+                        foreach (KeyValuePair<ulong, Configs.ClientConfig> curve in playersCurve)
                             dataToSend.Append($"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}!");
 
                         string dataToSendStr = dataToSend.ToString();
