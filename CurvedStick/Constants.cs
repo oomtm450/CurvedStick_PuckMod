@@ -3,7 +3,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, added current Puck Application.version to check for mod compatibility.
         /// </summary>
-        internal const string CURRENT_APPLICATION_VERSION = "323";
+        internal const string CURRENT_APPLICATION_VERSION = "897";
 
         internal const string WORKSHOP_MOD_NAME = "Curved Stick";
 
