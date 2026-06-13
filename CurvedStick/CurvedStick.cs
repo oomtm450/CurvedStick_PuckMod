@@ -254,8 +254,10 @@ namespace oomtm450PuckMod_CurvedStick {
 
                             content = content.Replace("/resetcurve", "").Replace(@"/curve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
+                                return false;
+                            }
                             else {
                                 string[] splittedMessageCurve = content.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
@@ -306,8 +308,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/heelcurve")) {
                             content = content.Replace(@"/heelcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int heelCurveValue)) {
                                     if (heelCurveValue > Configs.ClientConfig.HEEL_MAX)
@@ -323,8 +327,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/middlecurve")) {
                             content = content.Replace(@"/middlecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int middleCurveValue)) {
                                     if (middleCurveValue > Configs.ClientConfig.MIDDLE_MAX)
@@ -340,8 +346,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/toecurve")) {
                             content = content.Replace(@"/toecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int toeCurveValue)) {
                                     if (toeCurveValue > Configs.ClientConfig.TOE_MAX)
@@ -357,8 +365,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/tipcurve")) {
                             content = content.Replace(@"/tipcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The tip curve is {ClientConfig.TipCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int tipCurveValue)) {
                                     if (tipCurveValue > Configs.ClientConfig.TIP_MAX)
@@ -371,9 +381,15 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
+                        else if (content.StartsWith(@"/curvehelp")) {
+                            AddClientChatMessage(HELP_MESSAGE);
+                            return false;
+                        }
 
-                        if (changeCurve)
+                        if (changeCurve) {
                             SendNewCurvedStickValues();
+                            return false;
+                        }
                     }
                 }
                 catch (Exception ex) {
@@ -393,7 +409,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (content.StartsWith(@"/")) {
                         content = content.ToLowerInvariant();
 
-                        if (content.StartsWith(@"/help") || content.StartsWith(@"/curvehelp"))
+                        if (content.StartsWith(@"/help"))
                             AddClientChatMessage(HELP_MESSAGE);
                     }
                 }
