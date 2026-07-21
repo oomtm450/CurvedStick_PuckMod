@@ -455,15 +455,15 @@ namespace oomtm450PuckMod_CurvedStick {
             [HarmonyPriority(Priority.VeryLow)]
             public static bool Prefix(StickMesh __instance) {
                 try {
-                    MeshRenderer stickMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "stickMeshRenderer");
+                    MeshRenderer stickMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "stickMeshRenderer");
                     if (stickMeshRenderer != null && stickMeshRenderer.material != null)
                         UnityEngine.Object.Destroy(stickMeshRenderer.material);
 
-                    MeshRenderer shaftTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "shaftTapeMeshRenderer");
+                    MeshRenderer shaftTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "shaftTapeMeshRenderer");
                     if (shaftTapeMeshRenderer != null && shaftTapeMeshRenderer.material != null)
                         UnityEngine.Object.Destroy(shaftTapeMeshRenderer.material);
 
-                    MeshRenderer bladeTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "bladeTapeMeshRenderer");
+                    MeshRenderer bladeTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "bladeTapeMeshRenderer");
                     if (bladeTapeMeshRenderer != null && bladeTapeMeshRenderer.material != null)
                         UnityEngine.Object.Destroy(bladeTapeMeshRenderer.material);
                 }
