@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Unity.Netcode;
@@ -442,6 +443,35 @@ namespace oomtm450PuckMod_CurvedStick {
                 catch (Exception ex) {
                     Logging.LogError($"Error in {nameof(GameManager_Server_SetGameState_Patch)} Postfix().\n{ex}");
                 }
+            }
+        }
+
+        /// <summary>
+        /// Class that patches the OnDestroy event from StickMesh.
+        /// </summary>
+        [HarmonyPatch(typeof(StickMesh), "OnDestroy")]
+        public class StickMesh_OnDestroy_Patch {
+            [HarmonyPrefix]
+            [HarmonyPriority(Priority.VeryLow)]
+            public static bool Prefix(StickMesh __instance) {
+                try {
+                    MeshRenderer stickMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "stickMeshRenderer");
+                    if (stickMeshRenderer != null && stickMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(stickMeshRenderer.material);
+
+                    MeshRenderer shaftTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "shaftTapeMeshRenderer");
+                    if (shaftTapeMeshRenderer != null && shaftTapeMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(shaftTapeMeshRenderer.material);
+
+                    MeshRenderer bladeTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(MeshRenderer), __instance, "bladeTapeMeshRenderer");
+                    if (bladeTapeMeshRenderer != null && bladeTapeMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(bladeTapeMeshRenderer.material);
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in {nameof(StickMesh_OnDestroy_Patch)} Prefix().\n{ex}");
+                }
+
+                return false;
             }
         }
 
@@ -1165,6 +1195,13 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.LogError($"Failed to disable.\n{ex}");
                 return false;
             }
+        }
+
+        public static T GetPrivateField<T>(Type typeContainingField, object instanceOfType, string fieldName) {
+            if (instanceOfType == null)
+                return (T)typeContainingField.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static).GetValue(instanceOfType);
+            else
+                return (T)typeContainingField.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instanceOfType);
         }
 
         private class BoneInfo {
