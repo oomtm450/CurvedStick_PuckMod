@@ -21,7 +21,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.3.6";
+        private const string MOD_VERSION = "0.3.6a";
 
         /// <summary>
         /// List of string, last released versions of the mod.
@@ -37,6 +37,7 @@ namespace oomtm450PuckMod_CurvedStick {
             "0.3.4",
             "0.3.4a",
             "0.3.5",
+            "0.3.6",
         });
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
