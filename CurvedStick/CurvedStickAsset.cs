@@ -58,7 +58,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 GetAssets(fullPath);
             }
             catch (Exception ex) {
-                Logging.LogError($"Error loading Images.\n{ex}");
+                Logging.LogError($"Error loading Assets.\n{ex}");
             }
         }
 
