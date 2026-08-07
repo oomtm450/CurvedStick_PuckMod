@@ -207,7 +207,7 @@ namespace oomtm450PuckMod_CurvedStick {
             [HarmonyPostfix]
             public static void Postfix() {
                 // If this is the server, do not use the patch.
-                if (ServerFunc.IsDedicatedServer())
+                if (ServerFunc.IsDedicatedServer() || NetworkManager.Singleton == null || !NetworkManager.Singleton.IsConnectedClient)
                     return;
 
                 try {
