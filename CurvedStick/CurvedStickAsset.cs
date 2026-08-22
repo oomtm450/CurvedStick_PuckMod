@@ -43,7 +43,7 @@ namespace oomtm450PuckMod_CurvedStick {
 
         internal void LoadAssets() {
             try {
-                if (Meshes.Count != 0)
+                if (Meshes != null && Meshes.Count != 0)
                     return;
 
                 DontDestroyOnLoad(gameObject);
