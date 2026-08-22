@@ -1142,15 +1142,15 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log("Subscribing to events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.AddEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
-                    EventManager.AddEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
-                    EventManager.AddEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnClientConnected), Event_Everyone_OnClientConnected);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnClientDisconnected), Event_Everyone_OnClientDisconnected);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnGameStateChanged), Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.AddEventListener("Event_OnClientStopped", Event_OnClientStopped);
+                    EventManager.AddEventListener(nameof(Event_OnClientStopped), Event_OnClientStopped);
                 }
 
-                EventManager.AddEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
+                EventManager.AddEventListener(nameof(Event_Everyone_OnPlayerHandednessChanged), Event_Everyone_OnPlayerHandednessChanged);
 
                 return true;
             }
@@ -1169,15 +1169,15 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log("Unsubscribing from events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.RemoveEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
-                    EventManager.RemoveEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
-                    EventManager.RemoveEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnClientConnected), Event_Everyone_OnClientConnected);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnClientDisconnected), Event_Everyone_OnClientDisconnected);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnGameStateChanged), Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.RemoveEventListener("Event_OnClientStopped", Event_OnClientStopped);
+                    EventManager.RemoveEventListener(nameof(Event_OnClientStopped), Event_OnClientStopped);
                 }
 
-                EventManager.RemoveEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
+                EventManager.RemoveEventListener(nameof(Event_Everyone_OnPlayerHandednessChanged), Event_Everyone_OnPlayerHandednessChanged);
 
                 _hasRegisteredWithNamedMessageHandler = false;
                 _serverHasResponded = false;
