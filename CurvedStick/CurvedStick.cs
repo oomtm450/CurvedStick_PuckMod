@@ -1183,7 +1183,14 @@ namespace oomtm450PuckMod_CurvedStick {
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
                 _playersCurve.Clear();
-                _curvedStickAsset?.DestroyGameObjects();
+
+                try {
+                    if (_curvedStickAsset != null)
+                        _curvedStickAsset.DestroyGameObjects();
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Failed {nameof(_curvedStickAsset)}.{nameof(_curvedStickAsset.DestroyGameObjects)} in {nameof(OnDisable)}.\n{ex}");
+                }
 
                 Logging.Log($"Disabling...", ServerConfig, true);
 
