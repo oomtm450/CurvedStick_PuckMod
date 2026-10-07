@@ -414,7 +414,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (content.StartsWith(@"/")) {
                         content = content.ToLowerInvariant();
 
-                        if (content.StartsWith(@"/help"))
+                        if (content == @"/help")
                             AddClientChatMessage(HELP_MESSAGE);
                     }
                 }
