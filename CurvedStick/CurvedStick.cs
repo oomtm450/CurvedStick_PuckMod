@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using Unity.Netcode;
@@ -20,7 +21,7 @@ namespace oomtm450PuckMod_CurvedStick {
         /// <summary>
         /// Const string, version of the mod.
         /// </summary>
-        private const string MOD_VERSION = "0.3.3";
+        private const string MOD_VERSION = "0.3.6a";
 
         /// <summary>
         /// List of string, last released versions of the mod.
@@ -32,11 +33,16 @@ namespace oomtm450PuckMod_CurvedStick {
             "0.3.0",
             "0.3.1",
             "0.3.2",
+            "0.3.3",
+            "0.3.4",
+            "0.3.4a",
+            "0.3.5",
+            "0.3.6",
         });
 
         private const string ASK_SERVER_FOR_DATA = Constants.MOD_NAME + "ASKDATA";
 
-        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n* <b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX} {Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX} {Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX} {Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n* <b>/resetcurve</b> - Reset all curve values\n* <b>/heelcurve</b> - Adjust the curve on the heel ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX})\n* <b>/middlecurve</b> - Adjust the curve on the middle ({Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX})\n* <b>/toecurve</b> - Adjust the curve on the toe ({Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX})\n* <b>/tipcurve</b> - Adjust the curve on the tip ({Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n";
+        private static string HELP_MESSAGE { get; } = $"Curve stick commands:\n<b>/curve</b> - Adjust all curve values heel, middle, toe and tip ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX} {Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX} {Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX} {Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n<b>/resetcurve</b> - Reset all curve values\n<b>/heelcurve</b> - Adjust the curve on the heel ({Configs.ClientConfig.HEEL_MIN}-{Configs.ClientConfig.HEEL_MAX})\n<b>/middlecurve</b> - Adjust the curve on the middle ({Configs.ClientConfig.MIDDLE_MIN}-{Configs.ClientConfig.MIDDLE_MAX})\n<b>/toecurve</b> - Adjust the curve on the toe ({Configs.ClientConfig.TOE_MIN}-{Configs.ClientConfig.TOE_MAX})\n<b>/tipcurve</b> - Adjust the curve on the tip ({Configs.ClientConfig.TIP_MIN}-{Configs.ClientConfig.TIP_MAX})\n";
 
         private const ulong REPLAY_PLAYER_OFFSET = 1337UL;
         #endregion
@@ -90,7 +96,7 @@ namespace oomtm450PuckMod_CurvedStick {
         private static bool _updateAllSticksForReplay = false;
         private static readonly LockList<ulong> _sticksToUpdate = new LockList<ulong>();
 
-        private static int _frameCounter = 1;
+        private static int _frameCounter = 0;
 
         /// <summary>
         /// LockDictionary of ulong and DateTime, last time a mod out of date message was sent to a client (ulong clientId).
@@ -113,7 +119,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (_updateAllSticksForReplay) {
                         _updateAllSticksForReplay = false;
 
-                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value)) {
+                        foreach (Player player in PlayerManager.Instance.GetPlayers(true).Where(x => x.IsReplay.Value).ToList()) {
                             Configs.ClientConfig playerCurve;
                             PlayerHandedness handedness;
                             try {
@@ -138,7 +144,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     }
                     else {
                         if (++_frameCounter % 20 == 0) { // Check and send sticks update every x frames.
-                            _frameCounter = 1;
+                            _frameCounter = 0;
                             List<ulong> sticksToUpdate = new List<ulong>(_sticksToUpdate);
                             _sticksToUpdate.Clear();
 
@@ -201,7 +207,7 @@ namespace oomtm450PuckMod_CurvedStick {
             [HarmonyPostfix]
             public static void Postfix() {
                 // If this is the server, do not use the patch.
-                if (ServerFunc.IsDedicatedServer())
+                if (ServerFunc.IsDedicatedServer() || NetworkManager.Singleton == null || !NetworkManager.Singleton.IsConnectedClient)
                     return;
 
                 try {
@@ -210,7 +216,7 @@ namespace oomtm450PuckMod_CurvedStick {
                         _hasRegisteredWithNamedMessageHandler = true;
 
                         DateTime now = DateTime.UtcNow;
-                        if (_lastDateTimeAskStartupData + TimeSpan.FromSeconds(1) < now && _askServerForStartupDataCount++ < 10) {
+                        if (_lastDateTimeAskStartupData + TimeSpan.FromSeconds(5) < now && _askServerForStartupDataCount++ < 12) {
                             _lastDateTimeAskStartupData = now;
                             NetworkCommunication.SendData(ASK_SERVER_FOR_DATA, "1", NetworkManager.ServerClientId, Constants.FROM_CLIENT_TO_SERVER, ClientConfig);
                             SendNewCurvedStickValues();
@@ -253,8 +259,10 @@ namespace oomtm450PuckMod_CurvedStick {
 
                             content = content.Replace("/resetcurve", "").Replace(@"/curve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The curve is {FormatCurveStickForCommunication(ClientConfig).Replace(';', ' ')}");
+                                return false;
+                            }
                             else {
                                 string[] splittedMessageCurve = content.Split(' ');
                                 for (int i = 0; i < splittedMessageCurve.Length; i++) {
@@ -305,8 +313,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/heelcurve")) {
                             content = content.Replace(@"/heelcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The heel curve is {ClientConfig.HeelCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int heelCurveValue)) {
                                     if (heelCurveValue > Configs.ClientConfig.HEEL_MAX)
@@ -322,8 +332,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/middlecurve")) {
                             content = content.Replace(@"/middlecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The middle curve is {ClientConfig.MiddleCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int middleCurveValue)) {
                                     if (middleCurveValue > Configs.ClientConfig.MIDDLE_MAX)
@@ -339,8 +351,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/toecurve")) {
                             content = content.Replace(@"/toecurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The toe curve is {ClientConfig.ToeCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int toeCurveValue)) {
                                     if (toeCurveValue > Configs.ClientConfig.TOE_MAX)
@@ -356,8 +370,10 @@ namespace oomtm450PuckMod_CurvedStick {
                         else if (content.StartsWith(@"/tipcurve")) {
                             content = content.Replace(@"/tipcurve", "").Trim();
 
-                            if (string.IsNullOrEmpty(content))
+                            if (string.IsNullOrEmpty(content)) {
                                 AddClientChatMessage($"The tip curve is {ClientConfig.TipCurve}");
+                                return false;
+                            }
                             else {
                                 if (int.TryParse(content, out int tipCurveValue)) {
                                     if (tipCurveValue > Configs.ClientConfig.TIP_MAX)
@@ -370,9 +386,15 @@ namespace oomtm450PuckMod_CurvedStick {
                                 }
                             }
                         }
+                        else if (content.StartsWith(@"/curvehelp")) {
+                            AddClientChatMessage(HELP_MESSAGE);
+                            return false;
+                        }
 
-                        if (changeCurve)
+                        if (changeCurve) {
                             SendNewCurvedStickValues();
+                            return false;
+                        }
                     }
                 }
                 catch (Exception ex) {
@@ -392,7 +414,7 @@ namespace oomtm450PuckMod_CurvedStick {
                     if (content.StartsWith(@"/")) {
                         content = content.ToLowerInvariant();
 
-                        if (content.StartsWith(@"/help") || content.StartsWith(@"/curvehelp"))
+                        if (content == @"/help")
                             AddClientChatMessage(HELP_MESSAGE);
                     }
                 }
@@ -426,6 +448,35 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         /// <summary>
+        /// Class that patches the OnDestroy event from StickMesh.
+        /// </summary>
+        [HarmonyPatch(typeof(StickMesh), "OnDestroy")]
+        public class StickMesh_OnDestroy_Patch {
+            [HarmonyPrefix]
+            [HarmonyPriority(Priority.VeryLow)]
+            public static bool Prefix(StickMesh __instance) {
+                try {
+                    MeshRenderer stickMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "stickMeshRenderer");
+                    if (stickMeshRenderer != null && stickMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(stickMeshRenderer.material);
+
+                    MeshRenderer shaftTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "shaftTapeMeshRenderer");
+                    if (shaftTapeMeshRenderer != null && shaftTapeMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(shaftTapeMeshRenderer.material);
+
+                    MeshRenderer bladeTapeMeshRenderer = GetPrivateField<MeshRenderer>(typeof(StickMesh), __instance, "bladeTapeMeshRenderer");
+                    if (bladeTapeMeshRenderer != null && bladeTapeMeshRenderer.material != null)
+                        UnityEngine.Object.Destroy(bladeTapeMeshRenderer.material);
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Error in {nameof(StickMesh_OnDestroy_Patch)} Prefix().\n{ex}");
+                }
+
+                return false;
+            }
+        }
+
+        /// <summary>
         /// Method called when a client has connected (joined a server) on the server-side.
         /// Used to set server-sided stuff after the game has loaded.
         /// </summary>
@@ -434,16 +485,16 @@ namespace oomtm450PuckMod_CurvedStick {
             if (!ServerFunc.IsDedicatedServer())
                 return;
 
-            GameState oldGameState = (GameState)message["oldGameState"];
-            GameState newGameState = (GameState)message["newGameState"];
-
-            if (oldGameState.Phase == newGameState.Phase)
-                return;
-
-            if (newGameState.Phase != GamePhase.Replay)
-                return;
-
             try {
+                GameState oldGameState = (GameState)message["oldGameState"];
+                GameState newGameState = (GameState)message["newGameState"];
+
+                if (oldGameState.Phase == newGameState.Phase)
+                    return;
+
+                if (newGameState.Phase != GamePhase.Replay)
+                    return;
+
                 _ = Resources.UnloadUnusedAssets();
                 new Timer(UpdateAllSticksForReplayTimerCallback, null, 500, Timeout.Infinite);
             }
@@ -502,12 +553,10 @@ namespace oomtm450PuckMod_CurvedStick {
         public static void ReceiveData(ulong clientId, FastBufferReader reader) {
             try {
                 string dataName, dataStr;
-                if (clientId == NetworkManager.ServerClientId) { // If client Id is 0, we received data from the server, so we are client-sided.
+                if (clientId == NetworkManager.ServerClientId) // If client Id is 0, we received data from the server, so we are client-sided.
                     (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, ClientConfig);
-                }
-                else {
+                else
                     (dataName, dataStr) = NetworkCommunication.GetData(clientId, reader, ServerConfig);
-                }
 
                 switch (dataName) {
                     case Constants.MOD_NAME + "_" + nameof(MOD_VERSION): // CLIENT-SIDE : Mod version check, warn if client and server versions are not the same.
@@ -576,7 +625,8 @@ namespace oomtm450PuckMod_CurvedStick {
 
                         NetworkCommunication.SendData(Constants.MOD_NAME + "_" + nameof(MOD_VERSION), MOD_VERSION, clientId, Constants.FROM_SERVER_TO_CLIENT, ServerConfig);
                         StringBuilder dataToSend = new StringBuilder();
-                        foreach (KeyValuePair<ulong, Configs.ClientConfig> curve in _playersCurve)
+                        Dictionary<ulong, Configs.ClientConfig> playersCurve = new Dictionary<ulong, Configs.ClientConfig>(_playersCurve);
+                        foreach (KeyValuePair<ulong, Configs.ClientConfig> curve in playersCurve)
                             dataToSend.Append($"{curve.Key};{FormatCurveStickForCommunication(curve.Value)}!");
 
                         string dataToSendStr = dataToSend.ToString();
@@ -608,31 +658,46 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SetCurvedStickClientReceiveData(string dataStr) {
-            string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
-            ulong clientId = ulong.Parse(splittedDataStrSetCurvedStick[0]);
-            if (!_playersCurve.TryGetValue(clientId, out Configs.ClientConfig curveSetCurvedStick)) {
-                curveSetCurvedStick = new Configs.ClientConfig();
-                _playersCurve.Add(clientId, curveSetCurvedStick);
+            try {
+                string[] splittedDataStrSetCurvedStick = dataStr.Split(';');
+                ulong clientId = ulong.Parse(splittedDataStrSetCurvedStick[0]);
+                if (!_playersCurve.TryGetValue(clientId, out Configs.ClientConfig curveSetCurvedStick)) {
+                    curveSetCurvedStick = new Configs.ClientConfig();
+                    _playersCurve.Add(clientId, curveSetCurvedStick);
+                }
+
+                curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
+                curveSetCurvedStick.MiddleCurve = int.Parse(splittedDataStrSetCurvedStick[2]);
+                curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
+                curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
+
+                Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
+                if (player == null || !player)
+                    return;
+
+                SetCurvedStick(player, curveSetCurvedStick);
             }
-
-            curveSetCurvedStick.HeelCurve = int.Parse(splittedDataStrSetCurvedStick[1]);
-            curveSetCurvedStick.MiddleCurve = int.Parse(splittedDataStrSetCurvedStick[2]);
-            curveSetCurvedStick.ToeCurve = int.Parse(splittedDataStrSetCurvedStick[3]);
-            curveSetCurvedStick.TipCurve = int.Parse(splittedDataStrSetCurvedStick[4]);
-
-            Player player = PlayerManager.Instance.GetPlayerByClientId(clientId);
-            if (player == null || !player)
-                return;
-
-            SetCurvedStick(player, curveSetCurvedStick);
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetCurvedStickClientReceiveData)}.\n{ex}");
+            }
         }
 
         private static void UpdateStickTimerCallback(object stateInfo) {
-            _sticksToUpdate.Add((ulong)stateInfo);
+            try {
+                _sticksToUpdate.Add((ulong)stateInfo);
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(UpdateStickTimerCallback)}.\n{ex}");
+            }
         }
 
         private static void UpdateAllSticksForReplayTimerCallback(object stateInfo) {
-            _updateAllSticksForReplay = true;
+            try {
+                _updateAllSticksForReplay = true;
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(UpdateAllSticksForReplayTimerCallback)}.\n{ex}");
+            }
         }
 
         private static void SetCurvedStick(Player player, Configs.ClientConfig curve) {
@@ -707,236 +772,256 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void ChangeLayerOfAllChild(Transform transform, int layer) {
-            for (int i = 0; i < transform.childCount; i++)
-                ChangeLayerOfAllChild(transform.GetChild(i), layer);
+            try {
+                for (int i = 0; i < transform.childCount; i++)
+                    ChangeLayerOfAllChild(transform.GetChild(i), layer);
 
-            transform.gameObject.layer = layer;
+                transform.gameObject.layer = layer;
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(ChangeLayerOfAllChild)}.\n{ex}");
+            }
         }
 
         private static void SetCurvedStickMagicClient(GameObject stickMesh, SkinnedMeshRenderer prefabSkinnedMeshRenderer, Configs.ClientConfig curve,
             string handedness) {
-            GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
-            GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
-
-            MeshRenderer originalMeshRenderer = null;
-            SkinnedMeshRenderer skinnedMeshRenderer = null;
-            bool replaceOldStick = true;
             try {
-                originalMeshRenderer = stickGameObject.GetComponent<MeshRenderer>();
-                if (originalMeshRenderer == null) {
+                GameObject stickAttackerGameObject = stickMesh.transform.Find("stick_attacker").gameObject;
+                GameObject stickGameObject = stickAttackerGameObject.transform.Find("Stick (Attacker)").gameObject;
+
+                MeshRenderer originalMeshRenderer = null;
+                SkinnedMeshRenderer skinnedMeshRenderer = null;
+                bool replaceOldStick = true;
+                try {
+                    originalMeshRenderer = stickGameObject.GetComponent<MeshRenderer>();
+                    if (originalMeshRenderer == null) {
+                        replaceOldStick = false;
+                        skinnedMeshRenderer = stickGameObject.GetComponent<SkinnedMeshRenderer>();
+                    }
+                }
+                catch {
                     replaceOldStick = false;
                     skinnedMeshRenderer = stickGameObject.GetComponent<SkinnedMeshRenderer>();
                 }
-            }
-            catch {
-                replaceOldStick = false;
-                skinnedMeshRenderer = stickGameObject.GetComponent<SkinnedMeshRenderer>();
-            }
 
-            if (replaceOldStick) {
-                Material[] originalMeshRendererSharedMaterials = originalMeshRenderer.sharedMaterials;
-                UnityEngine.Object.DestroyImmediate(originalMeshRenderer);
-                UnityEngine.Object.DestroyImmediate(stickGameObject.GetComponent<MeshFilter>());
+                if (replaceOldStick) {
+                    Material[] originalMeshRendererSharedMaterials = originalMeshRenderer.sharedMaterials;
+                    UnityEngine.Object.DestroyImmediate(originalMeshRenderer);
+                    UnityEngine.Object.DestroyImmediate(stickGameObject.GetComponent<MeshFilter>());
 
-                skinnedMeshRenderer = stickGameObject.AddComponent<SkinnedMeshRenderer>();
-                if (skinnedMeshRenderer.sharedMesh != null)
-                    UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
-                skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
+                    skinnedMeshRenderer = stickGameObject.AddComponent<SkinnedMeshRenderer>();
+                    if (skinnedMeshRenderer.sharedMesh != null)
+                        UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
+                    skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
 
-                // --- 1. Get the bone mapping ---
-                // Create a dictionary of the target skeleton's bones for efficient lookup
-                var boneMap = new Dictionary<string, Transform>();
-                var boneInfo = new Dictionary<string, BoneInfo>();
-                foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
-                    boneMap[t.name] = t;
-                    boneInfo[t.name] = new BoneInfo {
-                        name = t.name,
-                        localPosition = t.localPosition,
-                        localRotation = t.localRotation,
-                        localScale = t.localScale,
-                    };
-                }
-
-                // Create the new bones array for the SkinnedMeshRenderer
-                Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
-                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
-                    string boneName = prefabSkinnedMeshRenderer.bones[i].name;
-                    boneInfo[boneName].parentIndex = i;
-                    if (boneMap.TryGetValue(boneName, out Transform mappedBone)) {
-                        newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
+                    // --- 1. Get the bone mapping ---
+                    // Create a dictionary of the target skeleton's bones for efficient lookup
+                    var boneMap = new Dictionary<string, Transform>();
+                    var boneInfo = new Dictionary<string, BoneInfo>();
+                    foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
+                        boneMap[t.name] = t;
+                        boneInfo[t.name] = new BoneInfo {
+                            name = t.name,
+                            localPosition = t.localPosition,
+                            localRotation = t.localRotation,
+                            localScale = t.localScale,
+                        };
                     }
-                    else {
-                        Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
-                        return;
+
+                    // Create the new bones array for the SkinnedMeshRenderer
+                    Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
+                    for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                        string boneName = prefabSkinnedMeshRenderer.bones[i].name;
+                        boneInfo[boneName].parentIndex = i;
+                        if (boneMap.TryGetValue(boneName, out Transform mappedBone)) {
+                            newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
+                        }
+                        else {
+                            Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
+                            return;
+                        }
                     }
+
+                    // Store the parent index for each bone
+                    for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                        Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
+                        if (parent != null && boneMap.ContainsKey(parent.name))
+                            newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
+                        else
+                            newBones[i].SetParent(stickGameObject.transform, false);
+
+                        newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
+                        newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
+                        newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
+                    }
+
+                    boneMap.Clear();
+                    boneInfo.Clear();
+
+                    skinnedMeshRenderer.bones = newBones;
+                    skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
+                    if (skinnedMeshRenderer.sharedMaterials != null) {
+                        foreach (Material material in skinnedMeshRenderer.sharedMaterials)
+                            UnityEngine.GameObject.Destroy(material);
+                    }
+                    skinnedMeshRenderer.sharedMaterials = originalMeshRendererSharedMaterials;
+
+                    skinnedMeshRenderer.rootBone.SetParent(stickGameObject.transform, false);
                 }
 
-                // Store the parent index for each bone
-                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
-                    Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
-                    if (parent != null && boneMap.ContainsKey(parent.name))
-                        newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
-                    else
-                        newBones[i].SetParent(stickGameObject.transform, false);
+                // Set stick mesh values.
+                SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
 
-                    newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
-                    newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
-                    newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
-                }
-
-                boneMap.Clear();
-                boneInfo.Clear();
-
-                skinnedMeshRenderer.bones = newBones;
-                skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
-                if (skinnedMeshRenderer.sharedMaterials != null) {
-                    foreach (Material material in skinnedMeshRenderer.sharedMaterials)
-                        UnityEngine.GameObject.Destroy(material);
-                }
-                skinnedMeshRenderer.sharedMaterials = originalMeshRendererSharedMaterials;
-
-                skinnedMeshRenderer.rootBone.SetParent(stickGameObject.transform, false);
+                // TODO : Set blade tape mesh.
+                MeshFilter tapeMeshFilter = stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>();
+                if (_originalTapeMesh == null)
+                    _originalTapeMesh = tapeMeshFilter.sharedMesh;
+                if (tapeMeshFilter.sharedMesh != null && tapeMeshFilter.sharedMesh != _originalTapeMesh)
+                    UnityEngine.GameObject.Destroy(tapeMeshFilter.sharedMesh);
+                if (curve.NoCurve) // TODO : Remove temp code to add a real tape.
+                    tapeMeshFilter.sharedMesh = _originalTapeMesh;
+                else
+                    tapeMeshFilter.sharedMesh = null;
+                // TODO : Set tape mesh values.
             }
-
-            // Set stick mesh values.
-            SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
-
-            // TODO : Set blade tape mesh.
-            MeshFilter tapeMeshFilter = stickAttackerGameObject.transform.Find("Blade Tape (Attacker)").gameObject.GetComponent<MeshFilter>();
-            if (_originalTapeMesh == null)
-                _originalTapeMesh = tapeMeshFilter.sharedMesh;
-            if (tapeMeshFilter.sharedMesh != null && tapeMeshFilter.sharedMesh != _originalTapeMesh)
-                UnityEngine.GameObject.Destroy(tapeMeshFilter.sharedMesh);
-            if (curve.NoCurve) // TODO : Remove temp code to add a real tape.
-                tapeMeshFilter.sharedMesh = _originalTapeMesh;
-            else
-                tapeMeshFilter.sharedMesh = null;
-            // TODO : Set tape mesh values.
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetCurvedStickMagicClient)}.\n{ex}");
+            }
         }
 
         private static void SetCurvedStickMagicServer(GameObject gameObject, SkinnedMeshRenderer prefabSkinnedMeshRenderer, Configs.ClientConfig curve,
             string handedness) {
-            SkinnedMeshRenderer skinnedMeshRenderer = null;
-            bool replaceOldStick = false;
             try {
-                skinnedMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
-                if (skinnedMeshRenderer == null)
+                SkinnedMeshRenderer skinnedMeshRenderer = null;
+                bool replaceOldStick = false;
+                try {
+                    skinnedMeshRenderer = gameObject.GetComponent<SkinnedMeshRenderer>();
+                    if (skinnedMeshRenderer == null)
+                        replaceOldStick = true;
+                }
+                catch {
                     replaceOldStick = true;
-            }
-            catch {
-                replaceOldStick = true;
-            }
-
-            MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
-
-            if (replaceOldStick) {
-                meshCollider.convex = true;
-
-                skinnedMeshRenderer = gameObject.AddComponent<SkinnedMeshRenderer>();
-                if (skinnedMeshRenderer.sharedMesh != null)
-                    UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
-                skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
-                skinnedMeshRenderer.updateWhenOffscreen = true;
-
-                // Create a dictionary of the target skeleton's bones for efficient lookup
-                Dictionary<string, Transform> boneMap = new Dictionary<string, Transform>();
-                Dictionary<string, BoneInfo> boneInfo = new Dictionary<string, BoneInfo>();
-
-                foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
-                    boneMap[t.name] = t;
-                    boneInfo[t.name] = new BoneInfo {
-                        name = t.name,
-                        localPosition = t.localPosition,
-                        localRotation = t.localRotation,
-                        localScale = t.localScale,
-                    };
                 }
 
-                // Create the new bones array for the SkinnedMeshRenderer
-                Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
-                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
-                    string boneName = prefabSkinnedMeshRenderer.bones[i].name;
-                    boneInfo[boneName].parentIndex = i;
-                    if (boneMap.TryGetValue(boneName, out Transform mappedBone))
-                        newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
-                    else {
-                        Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
-                        return;
+                MeshCollider meshCollider = gameObject.GetComponent<MeshCollider>();
+
+                if (replaceOldStick) {
+                    meshCollider.convex = true;
+
+                    skinnedMeshRenderer = gameObject.AddComponent<SkinnedMeshRenderer>();
+                    if (skinnedMeshRenderer.sharedMesh != null)
+                        UnityEngine.GameObject.Destroy(skinnedMeshRenderer.sharedMesh);
+                    skinnedMeshRenderer.sharedMesh = DuplicateMesh(prefabSkinnedMeshRenderer.sharedMesh);
+                    skinnedMeshRenderer.updateWhenOffscreen = true;
+
+                    // Create a dictionary of the target skeleton's bones for efficient lookup
+                    Dictionary<string, Transform> boneMap = new Dictionary<string, Transform>();
+                    Dictionary<string, BoneInfo> boneInfo = new Dictionary<string, BoneInfo>();
+
+                    foreach (var t in prefabSkinnedMeshRenderer.rootBone.GetComponentsInChildren<Transform>()) {
+                        boneMap[t.name] = t;
+                        boneInfo[t.name] = new BoneInfo {
+                            name = t.name,
+                            localPosition = t.localPosition,
+                            localRotation = t.localRotation,
+                            localScale = t.localScale,
+                        };
                     }
+
+                    // Create the new bones array for the SkinnedMeshRenderer
+                    Transform[] newBones = new Transform[prefabSkinnedMeshRenderer.bones.Length];
+                    for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                        string boneName = prefabSkinnedMeshRenderer.bones[i].name;
+                        boneInfo[boneName].parentIndex = i;
+                        if (boneMap.TryGetValue(boneName, out Transform mappedBone))
+                            newBones[i] = UnityEngine.Object.Instantiate(mappedBone, mappedBone.position, mappedBone.rotation);
+                        else {
+                            Logging.LogError($"Could not find bone '{boneName}' in the target skeleton.");
+                            return;
+                        }
+                    }
+
+                    // Store the parent index for each bone
+                    for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
+                        Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
+                        if (parent != null && boneMap.ContainsKey(parent.name))
+                            newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
+                        else
+                            newBones[i].SetParent(gameObject.transform, false);
+
+                        newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
+                        newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
+                        newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
+                    }
+
+                    skinnedMeshRenderer.bones = newBones;
+                    skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
+
+                    skinnedMeshRenderer.rootBone.SetParent(gameObject.transform, false);
+
+                    // Remove old prefab gameObjects.
+                    Transform baseClone = gameObject.transform.GetChild(0);
+                    UnityEngine.GameObject.Destroy(baseClone.GetChild(0).gameObject);
+                    Transform heelClone = baseClone.GetChild(2);
+                    UnityEngine.GameObject.Destroy(heelClone.GetChild(0).gameObject);
+                    Transform middleClone = heelClone.GetChild(1);
+                    UnityEngine.GameObject.Destroy(middleClone.GetChild(0).gameObject);
+                    Transform toeClone = middleClone.GetChild(1);
+                    UnityEngine.GameObject.Destroy(toeClone.GetChild(0).gameObject);
+                    Transform tipClone = toeClone.GetChild(1);
+                    UnityEngine.GameObject.Destroy(tipClone.GetChild(0).gameObject);
                 }
 
-                // Store the parent index for each bone
-                for (int i = 0; i < prefabSkinnedMeshRenderer.bones.Length; i++) {
-                    Transform parent = prefabSkinnedMeshRenderer.bones[i].parent;
-                    if (parent != null && boneMap.ContainsKey(parent.name))
-                        newBones[i].SetParent(newBones.First(x => x.name.StartsWith(parent.name)), false);
-                    else
-                        newBones[i].SetParent(gameObject.transform, false);
+                // Set stick mesh values.
+                SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
 
-                    newBones[i].localPosition = boneInfo.Values.First(x => x.parentIndex == i).localPosition;
-                    newBones[i].localRotation = boneInfo.Values.First(x => x.parentIndex == i).localRotation;
-                    newBones[i].localScale = boneInfo.Values.First(x => x.parentIndex == i).localScale;
-                }
-
-                skinnedMeshRenderer.bones = newBones;
-                skinnedMeshRenderer.rootBone = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Base"));
-
-                skinnedMeshRenderer.rootBone.SetParent(gameObject.transform, false);
-
-                // Remove old prefab gameObjects.
-                Transform baseClone = gameObject.transform.GetChild(0);
-                UnityEngine.GameObject.Destroy(baseClone.GetChild(0).gameObject);
-                Transform heelClone = baseClone.GetChild(2);
-                UnityEngine.GameObject.Destroy(heelClone.GetChild(0).gameObject);
-                Transform middleClone = heelClone.GetChild(1);
-                UnityEngine.GameObject.Destroy(middleClone.GetChild(0).gameObject);
-                Transform toeClone = middleClone.GetChild(1);
-                UnityEngine.GameObject.Destroy(toeClone.GetChild(0).gameObject);
-                Transform tipClone = toeClone.GetChild(1);
-                UnityEngine.GameObject.Destroy(tipClone.GetChild(0).gameObject);
+                if (meshCollider.sharedMesh != null)
+                    UnityEngine.GameObject.Destroy(meshCollider.sharedMesh);
+                Mesh colliderMesh = new Mesh();
+                skinnedMeshRenderer.BakeMesh(colliderMesh);
+                meshCollider.sharedMesh = colliderMesh;
             }
-
-            // Set stick mesh values.
-            SetTransformRotationForCurve(skinnedMeshRenderer, handedness, curve);
-
-            if (meshCollider.sharedMesh != null)
-                UnityEngine.GameObject.Destroy(meshCollider.sharedMesh);
-            Mesh colliderMesh = new Mesh();
-            skinnedMeshRenderer.BakeMesh(colliderMesh);
-            meshCollider.sharedMesh = colliderMesh;
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetCurvedStickMagicServer)}.\n{ex}");
+            }
         }
 
         private static void SetTransformRotationForCurve(SkinnedMeshRenderer skinnedMeshRenderer, string handedness, Configs.ClientConfig curve) {
-            Transform heelTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Heel")).transform;
-            heelTransform.localRotation = new Quaternion(
-                heelTransform.localRotation.x,
-                handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF / -2f : curve.HeelCurveF / 2f,
-                handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF : curve.HeelCurveF / -1,
-                heelTransform.localRotation.w);
+            try {
+                Transform heelTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Heel")).transform;
+                heelTransform.localRotation = new Quaternion(
+                    heelTransform.localRotation.x,
+                    handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF / -2f : curve.HeelCurveF / 2f,
+                    handedness == CurvedStickAsset.RIGHT ? curve.HeelCurveF : curve.HeelCurveF / -1,
+                    heelTransform.localRotation.w);
 
-            Transform middleTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Middle")).transform;
-            middleTransform.localRotation = new Quaternion(
-                middleTransform.localRotation.x,
-                handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF / -2f : curve.MiddleCurveF / 2f,
-                handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF : curve.MiddleCurveF / -1,
-                middleTransform.localRotation.w);
+                Transform middleTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Middle")).transform;
+                middleTransform.localRotation = new Quaternion(
+                    middleTransform.localRotation.x,
+                    handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF / -2f : curve.MiddleCurveF / 2f,
+                    handedness == CurvedStickAsset.RIGHT ? curve.MiddleCurveF : curve.MiddleCurveF / -1,
+                    middleTransform.localRotation.w);
 
-            Transform toeTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Toe")).transform;
-            toeTransform.localRotation = new Quaternion(
-                toeTransform.localRotation.x,
-                handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF / -2f : curve.ToeCurveF / 2f,
-                handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF : curve.ToeCurveF / -1,
-                toeTransform.localRotation.w);
+                Transform toeTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Toe")).transform;
+                toeTransform.localRotation = new Quaternion(
+                    toeTransform.localRotation.x,
+                    handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF / -2f : curve.ToeCurveF / 2f,
+                    handedness == CurvedStickAsset.RIGHT ? curve.ToeCurveF : curve.ToeCurveF / -1,
+                    toeTransform.localRotation.w);
 
-            Transform tipTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Tip")).transform;
-            float tipYValue = handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF / -2f : curve.TipCurveF / 2f;
-            if (tipYValue > 0.5f)
-                tipYValue = 0.5f;
-            tipTransform.localRotation = new Quaternion(
-                tipTransform.localRotation.x,
-                tipYValue,
-                handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF : curve.TipCurveF / -1,
-                tipTransform.localRotation.w);
+                Transform tipTransform = skinnedMeshRenderer.bones.First(x => x.name.StartsWith("Tip")).transform;
+                float tipYValue = handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF / -2f : curve.TipCurveF / 2f;
+                if (tipYValue > 0.5f)
+                    tipYValue = 0.5f;
+                tipTransform.localRotation = new Quaternion(
+                    tipTransform.localRotation.x,
+                    tipYValue,
+                    handedness == CurvedStickAsset.RIGHT ? curve.TipCurveF : curve.TipCurveF / -1,
+                    tipTransform.localRotation.w);
+            }
+            catch (Exception ex) {
+                Logging.LogError($"Error in {nameof(SetTransformRotationForCurve)}.\n{ex}");
+            }
         }
 
         private static Mesh DuplicateMesh(Mesh sourceMesh) {
@@ -960,7 +1045,7 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SendNewCurvedStickValues() {
-            ClientConfig.SaveConfig();
+            ClientConfig.Save();
             NetworkCommunication.SendData(
                 Constants.NEW_CURVED_STICK_VALUES,
                 FormatCurveStickForCommunication(ClientConfig),
@@ -996,10 +1081,10 @@ namespace oomtm450PuckMod_CurvedStick {
         /// </summary>
         /// <param name="message">Dictionary of string and object, content of the event.</param>
         public static void Event_OnClientStopped(Dictionary<string, object> message) {
-            if (NetworkManager.Singleton == null || ServerFunc.IsDedicatedServer())
-                return;
-
             try {
+                if (NetworkManager.Singleton == null || ServerFunc.IsDedicatedServer())
+                    return;
+
                 ServerConfig = new Configs.ServerConfig();
 
                 _serverHasResponded = false;
@@ -1032,10 +1117,8 @@ namespace oomtm450PuckMod_CurvedStick {
             try {
                 Logging.Log($"Enabling...", ServerConfig, true);
 
-                if (Application.version != Constants.CURRENT_APPLICATION_VERSION) {
-                    Logging.Log($"Server game version is {Application.version} and not {Constants.CURRENT_APPLICATION_VERSION}. Mod will not be enabled.", ServerConfig);
-                    return false;
-                }
+                if (Application.version != Constants.CURRENT_APPLICATION_VERSION)
+                    Logging.LogWarning($"Server game version is {Application.version} and not {Constants.CURRENT_APPLICATION_VERSION} !");
 
                 _harmony.PatchAll();
 
@@ -1059,15 +1142,15 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log("Subscribing to events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.AddEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
-                    EventManager.AddEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
-                    EventManager.AddEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnClientConnected), Event_Everyone_OnClientConnected);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnClientDisconnected), Event_Everyone_OnClientDisconnected);
+                    EventManager.AddEventListener(nameof(Event_Everyone_OnGameStateChanged), Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.AddEventListener("Event_OnClientStopped", Event_OnClientStopped);
+                    EventManager.AddEventListener(nameof(Event_OnClientStopped), Event_OnClientStopped);
                 }
 
-                EventManager.AddEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
+                EventManager.AddEventListener(nameof(Event_Everyone_OnPlayerHandednessChanged), Event_Everyone_OnPlayerHandednessChanged);
 
                 return true;
             }
@@ -1086,21 +1169,28 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.Log("Unsubscribing from events.", ServerConfig, true);
 
                 if (ServerFunc.IsDedicatedServer()) {
-                    EventManager.RemoveEventListener("Event_Everyone_OnClientConnected", Event_Everyone_OnClientConnected);
-                    EventManager.RemoveEventListener("Event_Everyone_OnClientDisconnected", Event_Everyone_OnClientDisconnected);
-                    EventManager.RemoveEventListener("Event_Everyone_OnGameStateChanged", Event_Everyone_OnGameStateChanged);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnClientConnected), Event_Everyone_OnClientConnected);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnClientDisconnected), Event_Everyone_OnClientDisconnected);
+                    EventManager.RemoveEventListener(nameof(Event_Everyone_OnGameStateChanged), Event_Everyone_OnGameStateChanged);
                 }
                 else {
-                    EventManager.RemoveEventListener("Event_OnClientStopped", Event_OnClientStopped);
+                    EventManager.RemoveEventListener(nameof(Event_OnClientStopped), Event_OnClientStopped);
                 }
 
-                EventManager.RemoveEventListener("Event_Everyone_OnPlayerHandednessChanged", Event_Everyone_OnPlayerHandednessChanged);
+                EventManager.RemoveEventListener(nameof(Event_Everyone_OnPlayerHandednessChanged), Event_Everyone_OnPlayerHandednessChanged);
 
                 _hasRegisteredWithNamedMessageHandler = false;
                 _serverHasResponded = false;
                 _askServerForStartupDataCount = 0;
                 _playersCurve.Clear();
-                _curvedStickAsset?.DestroyGameObjects();
+
+                try {
+                    if (_curvedStickAsset != null)
+                        _curvedStickAsset.DestroyGameObjects();
+                }
+                catch (Exception ex) {
+                    Logging.LogError($"Failed {nameof(_curvedStickAsset)}.{nameof(_curvedStickAsset.DestroyGameObjects)} in {nameof(OnDisable)}.\n{ex}");
+                }
 
                 Logging.Log($"Disabling...", ServerConfig, true);
 
@@ -1113,6 +1203,13 @@ namespace oomtm450PuckMod_CurvedStick {
                 Logging.LogError($"Failed to disable.\n{ex}");
                 return false;
             }
+        }
+
+        public static T GetPrivateField<T>(Type typeContainingField, object instanceOfType, string fieldName) {
+            if (instanceOfType == null)
+                return (T)typeContainingField.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static).GetValue(instanceOfType);
+            else
+                return (T)typeContainingField.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance).GetValue(instanceOfType);
         }
 
         private class BoneInfo {

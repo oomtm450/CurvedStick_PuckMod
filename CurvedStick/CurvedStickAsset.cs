@@ -32,17 +32,18 @@ namespace oomtm450PuckMod_CurvedStick {
 
         #region Methods/Functions
         internal void DestroyGameObjects() {
-            while (Meshes.Count != 0) {
+            while (Meshes != null && Meshes.Count != 0) {
                 var meshObject = Meshes.First();
                 Meshes.Remove(meshObject.Key);
             }
 
-            Destroy(gameObject);
+            if (gameObject != null)
+                Destroy(gameObject);
         }
 
         internal void LoadAssets() {
             try {
-                if (Meshes.Count != 0)
+                if (Meshes != null && Meshes.Count != 0)
                     return;
 
                 DontDestroyOnLoad(gameObject);
@@ -58,7 +59,7 @@ namespace oomtm450PuckMod_CurvedStick {
                 GetAssets(fullPath);
             }
             catch (Exception ex) {
-                Logging.LogError($"Error loading Images.\n{ex}");
+                Logging.LogError($"Error loading Assets.\n{ex}");
             }
         }
 
