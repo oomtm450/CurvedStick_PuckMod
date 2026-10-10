@@ -1045,7 +1045,7 @@ namespace oomtm450PuckMod_CurvedStick {
         }
 
         private static void SendNewCurvedStickValues() {
-            ClientConfig.SaveConfig();
+            ClientConfig.Save();
             NetworkCommunication.SendData(
                 Constants.NEW_CURVED_STICK_VALUES,
                 FormatCurveStickForCommunication(ClientConfig),
